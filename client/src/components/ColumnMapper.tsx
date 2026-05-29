@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
 import type { ParseResult, ColumnMapping, ColumnRole } from '@program-timer/shared';
-import { rowsToSchedule } from '@program-timer/shared';
+import { rowsToSchedule, isTimeValue } from '@program-timer/shared';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
@@ -39,6 +39,20 @@ const DURATION_UNIT_LABELS: Record<DurationUnit, string> = {
   s:    'Plain numbers = seconds (e.g. 3600)',
 };
 
+// For time columns skip non-time rows (decoration, section headers, etc.)
+function getSamples(rows: ParseResult['rows'], sourceKey: string, role: ColumnRole): string[] {
+  const isTimeCol = role === 'startTime' || role === 'endTime';
+  const out: string[] = [];
+  for (const row of rows) {
+    if (out.length >= 4) break;
+    const val = row[sourceKey];
+    if (val === null || val === undefined || val === '') continue;
+    if (isTimeCol && !isTimeValue(val)) continue;
+    out.push(String(val));
+  }
+  return out;
+}
+
 // Check if a startTime column's sample values contain time ranges like "9:00-10:00"
 function detectTimeRanges(rows: ParseResult['rows'], sourceKey: string): boolean {
   return rows.slice(0, 8).some(row => {
@@ -54,7 +68,6 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
   const setRole = (sourceKey: string, role: ColumnRole) =>
     setMapping(prev => prev.map(m => m.sourceKey === sourceKey ? { ...m, role } : m));
 
-  const sampleRows = parseResult.rows.slice(0, 4);
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const hasTitle    = mapping.some(m => m.role === 'title');
@@ -109,10 +122,7 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
         <div className="inline-flex gap-2 min-w-full">
           {mapping.map(({ sourceKey, role }) => {
             const style   = ROLE_STYLE[role];
-            const samples = sampleRows
-              .map(r => r[sourceKey])
-              .filter(v => v !== null && v !== undefined && v !== '')
-              .slice(0, 4);
+            const samples = getSamples(parseResult.rows, sourceKey, role);
             const isAutoDetected = (role === 'startTime' || role === 'endTime') &&
               parseResult.suggestedMapping.find(m => m.sourceKey === sourceKey)?.role === role;
             const isDurCol = role === 'duration';
