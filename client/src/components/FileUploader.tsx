@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Upload, Link, FileSpreadsheet } from 'lucide-react';
+import { Upload, Link, FileSpreadsheet, Clock, AlignLeft, Timer, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { extractSheetId } from '../utils/timeUtils';
+import { cn } from '../utils/timeUtils';
 
 interface Props {
   onFile: (file: File) => void;
@@ -10,15 +11,26 @@ interface Props {
   loading?: boolean;
 }
 
+const REQUIRED = [
+  { icon: <Clock className="w-3.5 h-3.5" />, label: 'Start time', detail: '9:00 · 9:00 AM · 09:00', color: 'text-crimson-400' },
+  { icon: <AlignLeft className="w-3.5 h-3.5" />, label: 'Item / title', detail: 'Any text column', color: 'text-amber-400' },
+];
+
+const OPTIONAL = [
+  { icon: <Clock className="w-3.5 h-3.5" />, label: 'End time', detail: '10:30 · 10:30 AM', color: 'text-warm-500' },
+  { icon: <Timer className="w-3.5 h-3.5" />, label: 'Duration', detail: '30 · 30 min · 1:30', color: 'text-warm-500' },
+  { icon: <FileText className="w-3.5 h-3.5" />, label: 'Notes / script', detail: 'Speaker copy, cues', color: 'text-warm-500' },
+];
+
 export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, loading }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [tipsOpen, setTipsOpen] = useState(true);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
+    e.preventDefault(); setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) onFile(file);
   }, [onFile]);
@@ -30,68 +42,119 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
 
   const handleUrlSubmit = () => {
     const id = extractSheetId(urlInput.trim());
-    if (!id) {
-      setUrlError('Could not find a spreadsheet ID in that URL. Make sure it\'s a Google Sheets link.');
-      return;
-    }
+    if (!id) { setUrlError("Couldn't find a spreadsheet ID — paste the full Google Sheets URL."); return; }
     setUrlError('');
     onSheetUrl(id);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Drag-and-drop zone */}
+    <div className="space-y-5">
+
+      {/* ── Sheet format guide ─────────────────────────────────────────────── */}
+      <div className="border border-warm-800/60 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setTipsOpen(t => !t)}
+          className="w-full flex items-center justify-between px-4 py-3
+            bg-warm-800/40 hover:bg-warm-800/60 transition-colors text-left">
+          <span className="text-xs font-semibold text-warm-400 uppercase tracking-wider">
+            How to format your spreadsheet
+          </span>
+          {tipsOpen
+            ? <ChevronUp className="w-4 h-4 text-warm-600" />
+            : <ChevronDown className="w-4 h-4 text-warm-600" />}
+        </button>
+
+        {tipsOpen && (
+          <div className="px-4 py-4 bg-warm-900/40 space-y-4">
+
+            {/* Required */}
+            <div>
+              <p className="text-[10px] text-warm-600 uppercase tracking-wider mb-2">Required columns</p>
+              <div className="grid grid-cols-2 gap-2">
+                {REQUIRED.map(r => (
+                  <div key={r.label} className="flex items-start gap-2.5 bg-warm-800/40
+                    border border-warm-700/40 rounded-lg px-3 py-2.5">
+                    <span className={cn('mt-0.5', r.color)}>{r.icon}</span>
+                    <div>
+                      <p className="text-xs font-medium text-warm-200">{r.label}</p>
+                      <p className="text-[10px] text-warm-600 mt-0.5">{r.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Optional */}
+            <div>
+              <p className="text-[10px] text-warm-600 uppercase tracking-wider mb-2">Optional columns</p>
+              <div className="grid grid-cols-3 gap-2">
+                {OPTIONAL.map(r => (
+                  <div key={r.label} className="flex items-start gap-2 bg-warm-800/20
+                    border border-warm-800/40 rounded-lg px-3 py-2.5">
+                    <span className={cn('mt-0.5', r.color)}>{r.icon}</span>
+                    <div>
+                      <p className="text-xs text-warm-400">{r.label}</p>
+                      <p className="text-[10px] text-warm-700 mt-0.5">{r.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="text-[11px] text-warm-600 space-y-1 border-t border-warm-800/40 pt-3">
+              <p>• First row must be <span className="text-warm-400">column headers</span></p>
+              <p>• Time ranges in one cell work: <span className="text-warm-400">9:00–10:00</span> or <span className="text-warm-400">9:00 AM–10:00 AM</span></p>
+              <p>• Rows without a time value (section headers, blank rows) are skipped automatically</p>
+              <p>• Supported formats: <span className="text-warm-400">.xlsx · .ods · .csv · Google Sheets</span></p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Drop zone ──────────────────────────────────────────────────────── */}
       <div
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`
-          relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
-          transition-all duration-200
-          ${dragging
-            ? 'border-blue-400 bg-blue-950/40'
-            : 'border-gray-600 hover:border-gray-400 bg-gray-900/40 hover:bg-gray-900/60'
-          }
-          ${loading ? 'pointer-events-none opacity-50' : ''}
-        `}
+        className={cn(
+          'relative border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all',
+          dragging
+            ? 'border-crimson-600/70 bg-crimson-950/30'
+            : 'border-warm-700/50 hover:border-warm-600/70 bg-warm-900/30 hover:bg-warm-900/50',
+          loading && 'pointer-events-none opacity-50'
+        )}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".xlsx,.ods,.csv"
-          onChange={handleFile}
-          className="sr-only"
-        />
+        <input ref={inputRef} type="file" accept=".xlsx,.ods,.csv" onChange={handleFile} className="sr-only" />
         <div className="flex flex-col items-center gap-3">
           {loading ? (
-            <div className="w-10 h-10 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-9 h-9 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <FileSpreadsheet className="w-10 h-10 text-gray-400" />
+            <FileSpreadsheet className={cn('w-9 h-9', dragging ? 'text-crimson-400' : 'text-warm-600')} />
           )}
           <div>
-            <p className="text-lg font-semibold text-gray-200">
-              {loading ? 'Parsing...' : 'Drop your spreadsheet here'}
+            <p className="text-base font-semibold text-warm-200">
+              {loading ? 'Parsing…' : 'Drop your spreadsheet here'}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Supports .xlsx and .ods — or click to browse
+            <p className="text-xs text-warm-600 mt-1">
+              .xlsx · .ods · .csv — or <span className="text-warm-400 underline underline-offset-2">click to browse</span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* Divider */}
+      {/* ── Divider ────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-700" />
-        <span className="text-gray-500 text-sm">or</span>
-        <div className="flex-1 h-px bg-gray-700" />
+        <div className="flex-1 h-px bg-warm-800/60" />
+        <span className="text-warm-700 text-xs">or</span>
+        <div className="flex-1 h-px bg-warm-800/60" />
       </div>
 
-      {/* Google Sheets URL */}
-      <div className="space-y-3">
-        <p className="text-sm text-gray-400 flex items-center gap-2">
-          <Link className="w-4 h-4" />
-          Connect a Google Sheet
+      {/* ── Google Sheets ──────────────────────────────────────────────────── */}
+      <div className="space-y-2.5">
+        <p className="text-xs text-warm-500 flex items-center gap-2">
+          <Link className="w-3.5 h-3.5" /> Connect a Google Sheet
         </p>
 
         {isGoogleAuthed ? (
@@ -100,34 +163,30 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
               type="url"
               value={urlInput}
               onChange={e => { setUrlInput(e.target.value); setUrlError(''); }}
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200
-                placeholder-gray-600 focus:outline-none focus:border-blue-500"
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+              className="flex-1 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-2
+                text-sm text-warm-200 placeholder-warm-700 focus:outline-none
+                focus:border-crimson-700/60 transition-colors"
               onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
             />
-            <button
-              onClick={handleUrlSubmit}
-              disabled={!urlInput.trim()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40
-                disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
-            >
+            <button onClick={handleUrlSubmit} disabled={!urlInput.trim()}
+              className="px-4 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
+                disabled:opacity-40 disabled:cursor-not-allowed border border-crimson-700/50
+                rounded-lg text-sm font-medium text-warm-100 transition-colors">
               Load
             </button>
           </div>
         ) : (
-          <button
-            onClick={onGoogleAuth}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700
-              border border-gray-600 hover:border-gray-400 rounded-lg text-sm font-medium transition-colors"
-          >
+          <button onClick={onGoogleAuth}
+            className="flex items-center gap-2 px-4 py-2 bg-warm-800/60 hover:bg-warm-700/60
+              border border-warm-700/50 hover:border-warm-600/60 rounded-lg text-sm
+              font-medium text-warm-300 transition-colors">
             <GoogleIcon />
             Sign in with Google
           </button>
         )}
 
-        {urlError && (
-          <p className="text-sm text-red-400">{urlError}</p>
-        )}
+        {urlError && <p className="text-xs text-crimson-300">{urlError}</p>}
       </div>
     </div>
   );
