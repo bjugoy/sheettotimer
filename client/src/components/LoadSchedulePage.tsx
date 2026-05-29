@@ -13,9 +13,10 @@ interface Props {
   onGoogleAuth: () => void;
   onBack?: () => void;
   backLabel?: string;
+  onScheduleLoaded?: (items: ScheduleItem[]) => void;
 }
 
-export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLabel = '← Back' }: Props) {
+export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLabel = '← Back', onScheduleLoaded }: Props) {
   const { parseResult, error: parseError, loading, parseFile, parseFromData, reset } = useFileParser();
   const { fetchSheet, syncError } = useGoogleSheets();
   const setItems        = useScheduleStore(s => s.setItems);
@@ -40,7 +41,8 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLab
     setColumnMapping(mapping);
     setItems(items);
     sendSchedule(items);
-  }, [setColumnMapping, setItems, sendSchedule]);
+    onScheduleLoaded?.(items);
+  }, [setColumnMapping, setItems, sendSchedule, onScheduleLoaded]);
 
   return (
     <div className="min-h-screen bg-warm-950 flex items-center justify-center p-4">

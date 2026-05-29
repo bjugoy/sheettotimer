@@ -136,6 +136,9 @@ export default function App() {
         onGoogleAuth={startOAuth}
         onBack={goBack}
         backLabel={fromDashboard ? '← Dashboard' : '← Home'}
+        onScheduleLoaded={locState.eventId
+          ? (loaded) => saveEventSchedule(locState.eventId!, loaded).catch(console.error)
+          : undefined}
       />
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </>
