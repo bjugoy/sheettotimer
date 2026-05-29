@@ -5,7 +5,7 @@ import type { Package } from '@revenuecat/purchases-js';
 import { useAuthStore } from '../store/authStore';
 import {
   getRC, isRCConfigured, entitlementsToPlan,
-  PurchasesError, ErrorCode, PLAN_ENTITLEMENT,
+  getPurchasesError, PLAN_ENTITLEMENT,
 } from '../lib/revenuecat';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
 import type { Plan } from '../lib/plans';
@@ -84,29 +84,28 @@ export function PaywallPage() {
   // ── Load RC offerings ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!isRCConfigured()) return;
-    const rc = getRC();
-    if (!rc) return;
-
-    rc.getOfferings()
-      .then(offerings => setPackages(offerings.current?.availablePackages ?? []))
-      .catch(() => setPackages([]))
-      .finally(() => setRcLoading(false));
+    getRC().then(rc => {
+      if (!rc) return;
+      rc.getOfferings()
+        .then(offerings => setPackages(offerings.current?.availablePackages ?? []))
+        .catch(() => setPackages([]))
+        .finally(() => setRcLoading(false));
+    });
   }, []);
 
   // ── Handle redirect return from Stripe ────────────────────────────────────
   useEffect(() => {
     if (!returnedSuccess) return;
-    // Clear the param, refresh plan from both RC and Supabase
     window.history.replaceState({}, '', '/paywall');
-    const rc = getRC();
-    if (!rc) { refreshPlan(); return; }
-
-    rc.getCustomerInfo().then(info => {
-      const active = Object.keys(info.entitlements.active);
-      const plan   = entitlementsToPlan(active);
-      setPlan(plan);
-      if (plan !== 'free') setSuccessPlan(plan);
-    }).catch(() => refreshPlan());
+    getRC().then(rc => {
+      if (!rc) { refreshPlan(); return; }
+      rc.getCustomerInfo().then(info => {
+        const active = Object.keys(info.entitlements.active);
+        const plan   = entitlementsToPlan(active);
+        setPlan(plan);
+        if (plan !== 'free') setSuccessPlan(plan);
+      }).catch(() => refreshPlan());
+    });
   }, [returnedSuccess]);
 
   // ── Purchase handler ───────────────────────────────────────────────────────
@@ -120,7 +119,7 @@ export function PaywallPage() {
       return;
     }
 
-    const rc = getRC();
+    const rc = await getRC();
     if (!rc) return;
 
     setPurchasing(planId);
@@ -131,6 +130,7 @@ export function PaywallPage() {
       setPlan(newPlan);
       setSuccessPlan(newPlan);
     } catch (e) {
+      const { PurchasesError, ErrorCode } = await getPurchasesError();
       if (e instanceof PurchasesError && e.errorCode === ErrorCode.UserCancelledError) {
         // User cancelled — no error to show
       } else {

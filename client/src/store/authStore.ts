@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        configureRC(session.user.id);
+        configureRC(session.user.id); // fire-and-forget — lazy loads RC SDK
         const plan = await fetchPlan(session.user.id);
         const showPaywall = localStorage.getItem('stt-paywall') === '1';
         if (showPaywall) localStorage.removeItem('stt-paywall');
