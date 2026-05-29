@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Upload, Link, FileSpreadsheet, Clock, AlignLeft, Timer, FileText, ChevronDown, ChevronUp } from 'lucide-react';
-import { extractSheetId } from '../utils/timeUtils';
-import { cn } from '../utils/timeUtils';
+import { Link, FileSpreadsheet, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { extractSheetId, cn } from '../utils/timeUtils';
 
 interface Props {
   onFile: (file: File) => void;
@@ -10,17 +9,6 @@ interface Props {
   onGoogleAuth: () => void;
   loading?: boolean;
 }
-
-const REQUIRED = [
-  { icon: <Clock className="w-3.5 h-3.5" />, label: 'Start time', detail: '9:00 · 9:00 AM · 09:00', color: 'text-crimson-400' },
-  { icon: <AlignLeft className="w-3.5 h-3.5" />, label: 'Item / title', detail: 'Any text column', color: 'text-amber-400' },
-];
-
-const OPTIONAL = [
-  { icon: <Clock className="w-3.5 h-3.5" />, label: 'End time', detail: '10:30 · 10:30 AM', color: 'text-warm-500' },
-  { icon: <Timer className="w-3.5 h-3.5" />, label: 'Duration', detail: '30 · 30 min · 1:30', color: 'text-warm-500' },
-  { icon: <FileText className="w-3.5 h-3.5" />, label: 'Notes / script', detail: 'Speaker copy, cues', color: 'text-warm-500' },
-];
 
 export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, loading }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,10 +38,9 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
   return (
     <div className="space-y-5">
 
-      {/* ── Sheet format guide ─────────────────────────────────────────────── */}
+      {/* ── Format guide ──────────────────────────────────────────────────── */}
       <div className="border border-warm-800/60 rounded-xl overflow-hidden">
-        <button
-          onClick={() => setTipsOpen(t => !t)}
+        <button onClick={() => setTipsOpen(t => !t)}
           className="w-full flex items-center justify-between px-4 py-3
             bg-warm-800/40 hover:bg-warm-800/60 transition-colors text-left">
           <span className="text-xs font-semibold text-warm-400 uppercase tracking-wider">
@@ -67,46 +54,84 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
         {tipsOpen && (
           <div className="px-4 py-4 bg-warm-900/40 space-y-4">
 
-            {/* Required */}
+            {/* Required — prominent */}
             <div>
-              <p className="text-[10px] text-warm-600 uppercase tracking-wider mb-2">Required columns</p>
-              <div className="grid grid-cols-2 gap-2">
-                {REQUIRED.map(r => (
-                  <div key={r.label} className="flex items-start gap-2.5 bg-warm-800/40
-                    border border-warm-700/40 rounded-lg px-3 py-2.5">
-                    <span className={cn('mt-0.5', r.color)}>{r.icon}</span>
-                    <div>
-                      <p className="text-xs font-medium text-warm-200">{r.label}</p>
-                      <p className="text-[10px] text-warm-600 mt-0.5">{r.detail}</p>
-                    </div>
+              <p className="text-[10px] font-bold text-crimson-400 uppercase tracking-wider mb-2.5">
+                Required — your sheet must have both of these
+              </p>
+              <div className="space-y-2">
+
+                {/* Title */}
+                <div className="flex items-center gap-3 bg-warm-800/50 border border-warm-700/50
+                  rounded-lg px-3 py-2.5">
+                  <span className="text-lg">📋</span>
+                  <div>
+                    <p className="text-sm font-semibold text-warm-100">Item / Title column</p>
+                    <p className="text-[11px] text-warm-500 mt-0.5">
+                      The name of each show item — any text column
+                    </p>
                   </div>
-                ))}
+                </div>
+
+                {/* Time — 3 options */}
+                <div className="bg-warm-800/50 border border-warm-700/50 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-lg">🕐</span>
+                    <p className="text-sm font-semibold text-warm-100">
+                      Time info — <span className="text-warm-400 font-normal text-xs">any one of these three:</span>
+                    </p>
+                  </div>
+                  <div className="space-y-2 pl-9">
+                    {[
+                      {
+                        label: 'Range in one cell',
+                        example: '9:00–10:00 · 9:00am–10:00pm · 9:00 AM – 10:00 PM',
+                        color: 'text-crimson-300',
+                      },
+                      {
+                        label: 'Start column + End column',
+                        example: 'Start: 9:00   |   End: 10:00',
+                        color: 'text-amber-300',
+                      },
+                      {
+                        label: 'Start column + Duration column',
+                        example: 'Start: 9:00   |   Duration: 60 · 1h · 1:00 · 60min',
+                        color: 'text-moss-300',
+                      },
+                    ].map((opt, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className={cn('text-[10px] font-bold mt-0.5 w-4 text-right flex-shrink-0', opt.color)}>
+                          {i === 0 ? 'A' : i === 1 ? 'B' : 'C'}
+                        </span>
+                        <div>
+                          <p className={cn('text-xs font-medium', opt.color)}>{opt.label}</p>
+                          <p className="text-[10px] text-warm-600 mt-0.5 font-mono">{opt.example}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Optional */}
             <div>
-              <p className="text-[10px] text-warm-600 uppercase tracking-wider mb-2">Optional columns</p>
-              <div className="grid grid-cols-3 gap-2">
-                {OPTIONAL.map(r => (
-                  <div key={r.label} className="flex items-start gap-2 bg-warm-800/20
-                    border border-warm-800/40 rounded-lg px-3 py-2.5">
-                    <span className={cn('mt-0.5', r.color)}>{r.icon}</span>
-                    <div>
-                      <p className="text-xs text-warm-400">{r.label}</p>
-                      <p className="text-[10px] text-warm-700 mt-0.5">{r.detail}</p>
-                    </div>
-                  </div>
-                ))}
+              <p className="text-[10px] text-warm-600 uppercase tracking-wider mb-2">Optional</p>
+              <div className="flex items-center gap-2 bg-warm-800/20 border border-warm-800/40
+                rounded-lg px-3 py-2">
+                <FileText className="w-3.5 h-3.5 text-warm-600 flex-shrink-0" />
+                <p className="text-xs text-warm-500">
+                  <span className="text-warm-400">Notes / speaker script</span>
+                  <span className="text-warm-700"> — shown in presenter screen</span>
+                </p>
               </div>
             </div>
 
             {/* Tips */}
             <div className="text-[11px] text-warm-600 space-y-1 border-t border-warm-800/40 pt-3">
               <p>• First row must be <span className="text-warm-400">column headers</span></p>
-              <p>• Time ranges in one cell work: <span className="text-warm-400">9:00–10:00</span> or <span className="text-warm-400">9:00 AM–10:00 AM</span></p>
-              <p>• Rows without a time value (section headers, blank rows) are skipped automatically</p>
-              <p>• Supported formats: <span className="text-warm-400">.xlsx · .ods · .csv · Google Sheets</span></p>
+              <p>• Rows without a time value (date headers, blank rows) are skipped automatically</p>
+              <p>• Formats: <span className="text-warm-400">.xlsx · .ods · .csv · Google Sheets</span></p>
             </div>
           </div>
         )}
