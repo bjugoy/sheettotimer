@@ -41,7 +41,7 @@ export function DashboardPage() {
     setLoadingProds(true);
     try {
       setProds(await getProductions());
-    } catch { setError('Failed to load productions'); }
+    } catch (e) { setError(`Failed to load productions: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setLoadingProds(false); }
   }, []);
 
@@ -68,7 +68,7 @@ export function DashboardPage() {
       setProds(prev => [p, ...prev]);
       setSelected(p.id);
       setNewProd(''); setAddingProd(false);
-    } catch { setError('Failed to create production'); }
+    } catch (e) { setError(`Failed to create production: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setSaving(false); }
   };
 

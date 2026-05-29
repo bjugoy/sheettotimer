@@ -1,6 +1,12 @@
 import { supabase } from './supabase';
 import type { ScheduleItem } from '@program-timer/shared';
 
+async function getUserId(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) throw new Error('Not authenticated');
+  return session.user.id;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Production {
@@ -31,9 +37,10 @@ export async function getProductions(): Promise<Production[]> {
 }
 
 export async function createProduction(name: string): Promise<Production> {
+  const userId = await getUserId();
   const { data, error } = await supabase
     .from('productions')
-    .insert({ name })
+    .insert({ name, user_id: userId })
     .select()
     .single();
   if (error) throw error;
@@ -68,9 +75,10 @@ export async function getEvent(id: string): Promise<Event | null> {
 }
 
 export async function createEvent(productionId: string, name: string): Promise<Event> {
+  const userId = await getUserId();
   const { data, error } = await supabase
     .from('events')
-    .insert({ production_id: productionId, name })
+    .insert({ production_id: productionId, name, user_id: userId })
     .select()
     .single();
   if (error) throw error;
