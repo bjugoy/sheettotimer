@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Radio, Users, Copy, Check, LogIn, LogOut } from 'lucide-react';
+import { Radio, Users, Copy, Check, LogIn, LogOut, Save } from 'lucide-react';
 import { JoinRoom } from './components/JoinRoom';
 import { LoadSchedulePage } from './components/LoadSchedulePage';
 import { TimerView } from './components/TimerView';
@@ -13,6 +13,7 @@ import { useAuthStore } from './store/authStore';
 import { useSocket } from './hooks/useSocket';
 import { useGoogleSheets } from './hooks/useGoogleSheets';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from './lib/plans';
+import { getEvent, saveEventSchedule } from './lib/db';
 import { cn } from './utils/timeUtils';
 
 type AppView = 'join' | 'load' | 'timer' | 'teleprompter';
@@ -51,6 +52,8 @@ export default function App() {
   const [showEditor, setShowEditor] = useState(false);
   const [showAuth, setShowAuth]     = useState(false);
   const [copied, setCopied]         = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [savedOk, setSavedOk]       = useState(false);
 
   useSocket();
 
@@ -71,6 +74,29 @@ export default function App() {
   useEffect(() => {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
   }, [features.canUseEditor]);
+
+  // Load saved schedule when opening an event from the dashboard
+  const setItems = useScheduleStore(s => s.setItems);
+  useEffect(() => {
+    if (!fromDashboard || !locState.eventId) return;
+    getEvent(locState.eventId).then(event => {
+      if (event?.schedule && event.schedule.length > 0) {
+        setItems(event.schedule);
+        // setItems triggers the items.length effect → moves to 'timer'
+      }
+      // If no saved schedule, stay on 'load' so user can upload
+    });
+  }, [locState.eventId]);
+
+  const handleSaveToEvent = async () => {
+    if (!locState.eventId || items.length === 0) return;
+    setSaving(true);
+    try {
+      await saveEventSchedule(locState.eventId, items);
+      setSavedOk(true);
+      setTimeout(() => setSavedOk(false), 2500);
+    } finally { setSaving(false); }
+  };
 
   const copyRoomCode = () => {
     if (roomCode) {
@@ -143,6 +169,30 @@ export default function App() {
             <div className="flex items-center gap-1 text-warm-700">
               <Users className="w-3 h-3" />
               <span className="text-[10px]">{users.length}</span>
+            </div>
+          )}
+
+          {/* Event name + save button — shown when timer was opened from dashboard */}
+          {fromDashboard && locState.eventName && (
+            <div className="flex items-center gap-2">
+              <span className="text-warm-800">·</span>
+              <span className="text-[11px] text-warm-600 max-w-[140px] truncate">
+                {locState.eventName}
+              </span>
+              {items.length > 0 && (
+                <button onClick={handleSaveToEvent} disabled={saving}
+                  title="Save schedule to this event"
+                  className={cn(
+                    'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded transition-colors',
+                    savedOk
+                      ? 'text-moss-300 bg-moss-900/30 border border-moss-700/40'
+                      : 'text-warm-500 hover:text-warm-300 hover:bg-warm-800 border border-transparent'
+                  )}>
+                  {savedOk
+                    ? <><Check className="w-3 h-3" /> Saved</>
+                    : <><Save className="w-3 h-3" /> {saving ? 'Saving…' : 'Save'}</>}
+                </button>
+              )}
             </div>
           )}
         </div>

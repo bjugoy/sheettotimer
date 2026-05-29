@@ -69,3 +69,41 @@ drop trigger if exists profiles_updated_at on public.profiles;
 create trigger profiles_updated_at
   before update on public.profiles
   for each row execute procedure public.set_updated_at();
+
+-- ── Productions ───────────────────────────────────────────────────────────────
+-- A production is a named project (e.g. "Annual Conference 2025").
+-- Each user owns their own productions.
+
+create table if not exists public.productions (
+  id         uuid        primary key default gen_random_uuid(),
+  user_id    uuid        references auth.users on delete cascade not null,
+  name       text        not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.productions enable row level security;
+
+create policy "productions: own all"
+  on public.productions for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ── Events ────────────────────────────────────────────────────────────────────
+-- An event is a single show day within a production.
+-- schedule stores the full ScheduleItem[] array as JSON.
+
+create table if not exists public.events (
+  id            uuid        primary key default gen_random_uuid(),
+  production_id uuid        references public.productions on delete cascade not null,
+  user_id       uuid        references auth.users on delete cascade not null,
+  name          text        not null,
+  schedule      jsonb       not null default '[]'::jsonb,
+  created_at    timestamptz not null default now()
+);
+
+alter table public.events enable row level security;
+
+create policy "events: own all"
+  on public.events for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
