@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(node -e \"const p=require\\('R:/ProgramScheduler/node_modules/typescript/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(node -e \"const p=require\\('R:/ProgramScheduler/server/package.json'\\); console.log\\(JSON.stringify\\({type: p.type, name: p.name}, null, 2\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(mkdir -p R:\\\\ProgramScheduler\\\\supabase)",
+      "Bash(gh --version)",
+      "Bash(git --version)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ],
+    "additionalDirectories": [
+      "R:\\ProgramScheduler"
+    ]
+  }
+}
