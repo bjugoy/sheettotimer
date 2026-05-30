@@ -33,10 +33,24 @@ const server = http.createServer(app);
 const isProd     = process.env.NODE_ENV === 'production';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
 
+// Support comma-separated origins and automatically include www ↔ non-www variants
+const allowedOrigins: string[] = CLIENT_URL.split(',').flatMap(raw => {
+  const origin = raw.trim();
+  try {
+    const u = new URL(origin);
+    const alt = u.hostname.startsWith('www.')
+      ? `${u.protocol}//${u.hostname.slice(4)}`
+      : `${u.protocol}//www.${u.hostname}`;
+    return [origin, alt];
+  } catch {
+    return [origin];
+  }
+});
+
 // Required for secure cookies to work behind Heroku's reverse proxy
 if (isProd) app.set('trust proxy', 1);
 
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(
   session({
@@ -55,7 +69,7 @@ app.use(
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
-  cors: { origin: CLIENT_URL, methods: ['GET', 'POST'], credentials: true },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
 });
 
 io.on('connection', (socket) => {
