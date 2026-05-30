@@ -37,10 +37,11 @@ export default function App() {
   const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
   const { checkAuthStatus, startOAuth, syncToSheet, syncing } = useGoogleSheets();
 
-  const roomCode   = useSessionStore(s => s.roomCode);
-  const users      = useSessionStore(s => s.users);
-  const connected  = useSessionStore(s => s.connected);
-  const isOperator = useSessionStore(s => s.isOperator);
+  const roomCode    = useSessionStore(s => s.roomCode);
+  const users       = useSessionStore(s => s.users);
+  const connected   = useSessionStore(s => s.connected);
+  const isOperator  = useSessionStore(s => s.isOperator);
+  const socketError = useSessionStore(s => s.socketError);
 
   const authUser   = useAuthStore(s => s.user);
   const plan       = useAuthStore(s => s.plan);
@@ -282,7 +283,7 @@ export default function App() {
                   bg-warm-900 border border-warm-700/60 rounded-xl shadow-2xl p-4 space-y-4">
 
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-warm-300">Share this session</p>
+                    <p className="text-xs font-semibold text-warm-300">Invite viewers</p>
                     <button onClick={() => setShowShare(false)} className="text-warm-600 hover:text-warm-300">
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -290,9 +291,16 @@ export default function App() {
 
                   {roomCode ? (
                     <>
-                      {/* Session code */}
+                      <p className="text-xs text-warm-400">
+                        Your crew can follow this timer live on their own screens.
+                        {users.length > 1 && (
+                          <span className="ml-1 text-moss-400">{users.length} connected.</span>
+                        )}
+                      </p>
+
+                      {/* Code */}
                       <div className="space-y-1.5">
-                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Session code</p>
+                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Code</p>
                         <div className="flex items-center gap-2">
                           <span className="flex-1 font-mono font-bold text-xl text-warm-100 tracking-[0.25em]
                             bg-warm-800/60 border border-warm-700/40 rounded-lg px-3 py-2 text-center">
@@ -308,9 +316,9 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Join link */}
+                      {/* Link */}
                       <div className="space-y-1.5">
-                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Join link</p>
+                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Link</p>
                         <div className="flex items-center gap-2">
                           <span className="flex-1 text-[11px] text-warm-500 bg-warm-800/40
                             border border-warm-700/30 rounded-lg px-2.5 py-2 truncate font-mono">
@@ -326,31 +334,47 @@ export default function App() {
                         </div>
                       </div>
 
-                      <p className="text-[10px] text-warm-700 leading-relaxed">
-                        Your crew opens the join link or goes to{' '}
-                        <span className="text-warm-500">{window.location.origin}</span>{' '}
-                        and enters the code to follow the timer live.
+                      <p className="text-[10px] text-warm-700">
+                        Send the link or code to anyone who needs to follow the timer.
+                        They join as viewers — you stay in control.
                       </p>
                     </>
                   ) : (
                     <div className="space-y-3">
                       <p className="text-xs text-warm-400 leading-relaxed">
-                        Start a <span className="text-warm-200">live session</span> to sync this timer
-                        with your crew in real time. Everyone follows the same countdown on their own device.
+                        Want your crew to follow this timer on their own screens?
+                        Generate an invite link — they open it and see the same countdown, live.
                       </p>
+
+                      {socketError && (
+                        <p className="text-[11px] text-crimson-300 bg-crimson-950/40
+                          border border-crimson-800/40 rounded-lg px-3 py-2">
+                          {socketError}
+                        </p>
+                      )}
+
+                      {!connected && (
+                        <p className="text-[11px] text-amber-400/80 bg-amber-950/30
+                          border border-amber-800/30 rounded-lg px-3 py-2">
+                          Not connected to server — check your connection.
+                        </p>
+                      )}
+
                       {features.canCreateRoom ? (
                         <button
-                          onClick={() => { handleCreateSession(); }}
+                          onClick={handleCreateSession}
+                          disabled={!connected}
                           className="w-full flex items-center justify-center gap-2 py-2.5
                             bg-crimson-800/60 hover:bg-crimson-700/60 border border-crimson-700/50
-                            rounded-lg text-sm font-medium text-warm-100 transition-colors">
+                            rounded-lg text-sm font-medium text-warm-100 transition-colors
+                            disabled:opacity-40 disabled:cursor-not-allowed">
                           <Share2 className="w-3.5 h-3.5" />
-                          Start live session
+                          Get invite link
                         </button>
                       ) : (
                         <p className="text-[11px] text-amber-400/80 bg-amber-950/30
-                          border border-amber-800/30 rounded-lg px-3 py-2 leading-relaxed">
-                          Live sessions require a Pro plan or higher.
+                          border border-amber-800/30 rounded-lg px-3 py-2">
+                          Invite links require a Pro plan or higher.
                         </p>
                       )}
                     </div>
