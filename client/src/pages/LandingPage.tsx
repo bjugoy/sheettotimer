@@ -106,7 +106,7 @@ export function LandingPage() {
             Run your show<br />
             <span className="text-crimson-400">from a spreadsheet.</span>
           </h1>
-          <p className="text-warm-500 text-lg leading-relaxed mb-8">
+          <p className="text-warm-400 text-lg leading-relaxed mb-8">
             Upload your Excel run-of-show, share a room code with your crew,
             and keep everyone on the same countdown — live.
           </p>
@@ -122,21 +122,21 @@ export function LandingPage() {
               Sign up
             </button>
           </div>
-          <div className="flex items-center gap-6 mt-8 text-warm-700 text-xs">
-            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-500" /> No credit card</span>
-            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-500" /> Works with Excel & Google Sheets</span>
-            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-moss-500" /> Setup in 60 seconds</span>
+          <div className="flex items-center gap-6 mt-8 text-warm-400 text-xs">
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-400" /> No credit card</span>
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-400" /> Works with Excel & Google Sheets</span>
+            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-moss-400" /> Setup in 60 seconds</span>
           </div>
         </div>
 
         {/* Right: live demo */}
         <div className="flex-shrink-0 flex flex-col items-center gap-3">
-          <div className="flex items-center gap-1.5 text-[10px] text-warm-700 uppercase tracking-widest mb-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-warm-500 uppercase tracking-widest mb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-crimson-500 animate-pulse" />
             Live demo
           </div>
           <MiniTimerDemo />
-          <p className="text-[11px] text-warm-700 text-center max-w-[280px]">
+          <p className="text-[11px] text-warm-400 text-center max-w-[280px]">
             This is a live preview — the timer is actually running.
           </p>
         </div>
@@ -153,7 +153,7 @@ export function LandingPage() {
             <div key={f.title} className="space-y-2">
               {f.icon}
               <h3 className="text-sm font-semibold text-warm-200">{f.title}</h3>
-              <p className="text-sm text-warm-600 leading-relaxed">{f.body}</p>
+              <p className="text-sm text-warm-400 leading-relaxed">{f.body}</p>
             </div>
           ))}
         </div>
@@ -163,7 +163,7 @@ export function LandingPage() {
       <section className="max-w-6xl mx-auto px-8 py-20" id="pricing">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-warm-100 mb-2">Simple pricing</h2>
-          <p className="text-warm-600">Start free. Upgrade when you need rooms and collaboration.</p>
+          <p className="text-warm-400">Start free. Upgrade when you need rooms and collaboration.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {PLANS.map(plan => (
@@ -175,7 +175,7 @@ export function LandingPage() {
                 </span>
                 <div className="mt-1 flex items-baseline gap-0.5">
                   <span className="text-3xl font-bold text-warm-100">{plan.price}</span>
-                  <span className="text-warm-600 text-sm">{plan.period}</span>
+                  <span className="text-warm-400 text-sm">{plan.period}</span>
                 </div>
               </div>
               <ul className="space-y-2 flex-1 mb-6">
@@ -198,7 +198,7 @@ export function LandingPage() {
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}
       <footer className="border-t border-warm-800/30 px-8 py-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-[11px] text-warm-700">
+        <div className="max-w-6xl mx-auto flex items-center justify-between text-[11px] text-warm-500">
           <div className="flex items-center gap-1.5">
             <Radio className="w-3.5 h-3.5 text-crimson-600" />
             <span>SheetToTimer</span>
