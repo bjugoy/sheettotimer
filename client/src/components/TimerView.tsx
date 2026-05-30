@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SkipForward, SkipBack, Clock, Timer, Play, RotateCcw } from 'lucide-react';
+import { SkipForward, SkipBack, Clock, Timer, Play, RotateCcw, Square } from 'lucide-react';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useSocket } from '../hooks/useSocket';
@@ -24,15 +24,18 @@ interface Props {
 export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
   const items         = useScheduleStore(s => s.items);
   const currentIndex  = useScheduleStore(s => s.currentIndex);
-  const markStarted   = useScheduleStore(s => s.markStarted);
-  const updateItem    = useScheduleStore(s => s.updateItem);
-  const advanceToNext  = useScheduleStore(s => s.advanceToNext);
-  const revertToPrev   = useScheduleStore(s => s.revertToPrev);
-  const shiftToNow     = useScheduleStore(s => s.shiftToNow);
+  const markStarted     = useScheduleStore(s => s.markStarted);
+  const updateItem      = useScheduleStore(s => s.updateItem);
+  const advanceToNext   = useScheduleStore(s => s.advanceToNext);
+  const revertToPrev    = useScheduleStore(s => s.revertToPrev);
+  const shiftToNow      = useScheduleStore(s => s.shiftToNow);
   const resetToOriginal = useScheduleStore(s => s.resetToOriginal);
+  const pause           = useScheduleStore(s => s.pause);
+  const resume          = useScheduleStore(s => s.resume);
+  const isPaused        = useScheduleStore(s => s.isPaused);
   const isOperator    = useSessionStore(s => s.isOperator);
   const roomCode      = useSessionStore(s => s.roomCode);
-  const { advanceItem, revertItem, updateItem: socketUpdateItem } = useSocket();
+  const { advanceItem, revertItem, updateItem: socketUpdateItem, sendSchedule } = useSocket();
   const { remainingMs, color, isOvertime, nowMs } = useTimer();
 
   const [timerMode, setTimerMode] = useState<TimerMode>('countdown');
@@ -59,6 +62,13 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
 
   const handleRevert = () => {
     if (!roomCode) { revertToPrev(); } else { revertItem(); }
+  };
+
+  const handlePause = () => pause();
+
+  const handleResume = () => {
+    resume(); // zustand set() is synchronous — store is updated immediately
+    if (roomCode) sendSchedule(useScheduleStore.getState().items);
   };
 
   // ── Timer display ──────────────────────────────────────────────────────────
@@ -95,9 +105,11 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
         <div className="flex items-center justify-between px-5 pt-5 pb-0">
           <span className={cn(
             'text-[10px] uppercase tracking-[0.2em] font-medium',
-            isActive ? 'text-crimson-300' : 'text-warm-600'
+            isPaused  ? 'text-warm-500'
+            : isActive ? 'text-crimson-300'
+            : 'text-warm-600'
           )}>
-            {isActive ? '● live' : eventStarted ? 'next up' : 'ready'}
+            {isPaused ? '⏸ paused' : isActive ? '● live' : eventStarted ? 'next up' : 'ready'}
           </span>
           {lastItem && (
             <span className="text-[10px] text-warm-700 timer-display">
@@ -154,7 +166,7 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
           <span
             className={cn(
               'timer-display font-mono font-bold select-none transition-colors duration-300',
-              timerTextColor
+              isPaused ? 'text-warm-600' : timerTextColor
             )}
             style={{ fontSize: 'clamp(2.6rem, 7vw, 3.8rem)', lineHeight: 1 }}
           >
@@ -180,10 +192,9 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
           </div>
         )}
 
-        {/* ── Advance + revert (running + can control) ────────────────── */}
+        {/* ── Advance + revert + pause (running + can control) ───────── */}
         {eventStarted && canControl && (
           <div className="px-4 pb-4 flex gap-2">
-            {/* Revert — icon-only, compact */}
             <button
               onClick={handleRevert}
               title="Revert to previous item"
@@ -191,9 +202,23 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
                 bg-warm-900 hover:bg-warm-800 border border-warm-800
                 hover:border-warm-700 rounded-lg transition-all"
             >
-              <SkipBack className="w-3.5 h-3.5 text-warm-500 hover:text-warm-300" />
+              <SkipBack className="w-3.5 h-3.5 text-warm-500" />
             </button>
-            {/* Advance */}
+            {/* Pause / Resume */}
+            <button
+              onClick={isPaused ? handleResume : handlePause}
+              title={isPaused ? 'Resume' : 'Pause'}
+              className={cn(
+                'flex items-center justify-center px-3 py-2.5 rounded-lg transition-all border',
+                isPaused
+                  ? 'bg-crimson-900/40 border-crimson-700/60 text-crimson-300 hover:bg-crimson-800/50'
+                  : 'bg-warm-900 hover:bg-warm-800 border-warm-800 hover:border-warm-700 text-warm-500 hover:text-warm-300'
+              )}
+            >
+              {isPaused
+                ? <Play className="w-3.5 h-3.5" />
+                : <Square className="w-3.5 h-3.5" />}
+            </button>
             <button
               onClick={handleAdvance}
               className="flex-1 flex items-center justify-center gap-2 py-2.5

@@ -5,6 +5,7 @@ import {
   ChevronRight, Trash2, Play, Loader2, UserCircle,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useScheduleStore } from '../store/scheduleStore';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
 import {
   getProductions, createProduction, deleteProduction,
@@ -20,6 +21,10 @@ export function DashboardPage() {
   const plan        = useAuthStore(s => s.plan);
   const features    = getPlanFeatures(plan);
   const badgeCls    = PLAN_BADGE_COLOR[plan];
+
+  const liveEventId = useScheduleStore(s => s.activeEventId);
+  const storeItems  = useScheduleStore(s => s.items);
+  const isLive      = storeItems.some(i => i.status === 'active');
 
   const [showProfile, setShowProfile] = useState(false);
 
@@ -283,14 +288,20 @@ export function DashboardPage() {
                         className="group bg-warm-900/60 border border-warm-800/40 rounded-xl p-4
                           hover:border-warm-700/60 transition-colors">
                         <div className="flex items-start justify-between mb-1">
-                          <h3 className="text-sm font-medium text-warm-200">{event.name}</h3>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="text-sm font-medium text-warm-200 truncate">{event.name}</h3>
+                            {isLive && event.id === liveEventId && (
+                              <span className="shrink-0 text-[9px] font-bold tracking-widest uppercase
+                                text-crimson-400 animate-pulse">● live</span>
+                            )}
+                          </div>
                           <button onClick={() => handleDeleteEvent(event.id)}
                             className="opacity-0 group-hover:opacity-100 text-warm-700
                               hover:text-crimson-400 transition-all ml-2 flex-shrink-0">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <p className="text-[10px] text-warm-700 mb-3">
+                        <p className="text-[10px] text-warm-400 mb-3">
                           {event.schedule.length > 0
                             ? `${event.schedule.length} items saved`
                             : 'No schedule yet'}
@@ -298,11 +309,17 @@ export function DashboardPage() {
                           {new Date(event.created_at).toLocaleDateString()}
                         </p>
                         <button onClick={() => openEvent(event)}
-                          className="w-full flex items-center justify-center gap-2 py-2 text-xs
-                            bg-crimson-800/50 hover:bg-crimson-700/50 border border-crimson-700/40
-                            text-warm-200 rounded-lg transition-colors">
+                          className={cn(
+                            'w-full flex items-center justify-center gap-2 py-2 text-xs',
+                            'border rounded-lg transition-colors text-warm-200',
+                            isLive && event.id === liveEventId
+                              ? 'bg-crimson-700/50 hover:bg-crimson-600/50 border-crimson-600/60'
+                              : 'bg-crimson-800/50 hover:bg-crimson-700/50 border-crimson-700/40'
+                          )}>
                           <Play className="w-3 h-3" />
-                          {event.schedule.length > 0 ? 'Open timer' : 'Upload schedule'}
+                          {isLive && event.id === liveEventId
+                            ? 'Back to timer'
+                            : event.schedule.length > 0 ? 'Open timer' : 'Upload schedule'}
                         </button>
                       </div>
                     ))}

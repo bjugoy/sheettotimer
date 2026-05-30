@@ -31,6 +31,7 @@ export default function App() {
   const locState  = (location.state ?? {}) as LocationState;
 
   const items               = useScheduleStore(s => s.items);
+  const setActiveEventId    = useScheduleStore(s => s.setActiveEventId);
   const spreadsheetId       = useScheduleStore(s => s.spreadsheetId);
   const googleAuthenticated = useScheduleStore(s => s.googleAuthenticated);
   const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
@@ -63,6 +64,11 @@ export default function App() {
     if (params.get('auth') === 'success') window.history.replaceState({}, '', location.pathname);
     checkAuthStatus().then(setGoogleAuthenticated);
   }, []);
+
+  // Track which dashboard event is currently open so the dashboard can show a LIVE badge
+  useEffect(() => {
+    setActiveEventId(locState.eventId ?? null);
+  }, [locState.eventId]);
 
   useEffect(() => {
     if (items.length > 0 && view === 'load') setView('timer');
