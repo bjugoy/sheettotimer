@@ -37,12 +37,14 @@ export default function App() {
   const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
   const { checkAuthStatus, startOAuth, syncToSheet, syncing } = useGoogleSheets();
 
-  const roomCode  = useSessionStore(s => s.roomCode);
-  const users     = useSessionStore(s => s.users);
-  const connected = useSessionStore(s => s.connected);
+  const roomCode   = useSessionStore(s => s.roomCode);
+  const users      = useSessionStore(s => s.users);
+  const connected  = useSessionStore(s => s.connected);
+  const isOperator = useSessionStore(s => s.isOperator);
 
   const authUser   = useAuthStore(s => s.user);
   const plan       = useAuthStore(s => s.plan);
+  const getToken   = useAuthStore(s => s.getToken);
   const features   = getPlanFeatures(plan);
 
   // If coming from dashboard or landing "try for free", skip the join screen
@@ -60,7 +62,7 @@ export default function App() {
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
 
-  useSocket();
+  const { createRoom, sendSchedule } = useSocket();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -79,6 +81,17 @@ export default function App() {
   useEffect(() => {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
   }, [features.canUseEditor]);
+
+  // When operator creates/joins a session with items already loaded, push the schedule
+  useEffect(() => {
+    if (roomCode && isOperator && items.length > 0) sendSchedule(items);
+  }, [roomCode]);
+
+  const handleCreateSession = () => {
+    const token = getToken();
+    const name  = authUser?.user_metadata?.full_name || authUser?.email?.split('@')[0] || 'Operator';
+    if (token) createRoom(name, token);
+  };
 
   // Load / save per-event timer state when navigating between events
   const setItems    = useScheduleStore(s => s.setItems);
@@ -236,9 +249,9 @@ export default function App() {
             </div>
           )}
 
-          {/* Users in room */}
+          {/* Connected viewers */}
           {users.length > 0 && (
-            <div className="flex items-center gap-1 text-warm-600">
+            <div className="flex items-center gap-1 text-warm-500" title={`${users.length} connected`}>
               <Users className="w-3 h-3" />
               <span className="text-[10px]">{users.length}</span>
             </div>
@@ -277,9 +290,9 @@ export default function App() {
 
                   {roomCode ? (
                     <>
-                      {/* Room code */}
+                      {/* Session code */}
                       <div className="space-y-1.5">
-                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Room code</p>
+                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Session code</p>
                         <div className="flex items-center gap-2">
                           <span className="flex-1 font-mono font-bold text-xl text-warm-100 tracking-[0.25em]
                             bg-warm-800/60 border border-warm-700/40 rounded-lg px-3 py-2 text-center">
@@ -314,17 +327,32 @@ export default function App() {
                       </div>
 
                       <p className="text-[10px] text-warm-700 leading-relaxed">
-                        Viewers open <span className="text-warm-500">{window.location.origin}</span> and enter the code, or use the join link directly.
+                        Your crew opens the join link or goes to{' '}
+                        <span className="text-warm-500">{window.location.origin}</span>{' '}
+                        and enters the code to follow the timer live.
                       </p>
                     </>
                   ) : (
                     <div className="space-y-3">
                       <p className="text-xs text-warm-400 leading-relaxed">
-                        You're running solo. To invite viewers, create a room first — then share the code or link with your crew.
+                        Start a <span className="text-warm-200">live session</span> to sync this timer
+                        with your crew in real time. Everyone follows the same countdown on their own device.
                       </p>
-                      <p className="text-[10px] text-warm-600 leading-relaxed">
-                        Go to <span className="text-warm-400">Join screen</span> → <span className="text-warm-400">Create room</span> to get a shareable code.
-                      </p>
+                      {features.canCreateRoom ? (
+                        <button
+                          onClick={() => { handleCreateSession(); }}
+                          className="w-full flex items-center justify-center gap-2 py-2.5
+                            bg-crimson-800/60 hover:bg-crimson-700/60 border border-crimson-700/50
+                            rounded-lg text-sm font-medium text-warm-100 transition-colors">
+                          <Share2 className="w-3.5 h-3.5" />
+                          Start live session
+                        </button>
+                      ) : (
+                        <p className="text-[11px] text-amber-400/80 bg-amber-950/30
+                          border border-amber-800/30 rounded-lg px-3 py-2 leading-relaxed">
+                          Live sessions require a Pro plan or higher.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

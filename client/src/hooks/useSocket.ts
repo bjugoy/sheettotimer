@@ -37,9 +37,13 @@ export function useSocket() {
     socket.on('room:joined', ({ room, user }) => {
       setRoom(room.code);
       setUser(user);
-      const recalced = recalculate(room.schedule, Date.now());
-      setItems(recalced);
-      setCurrentIndex(room.currentIndex);
+      if (room.schedule.length > 0) {
+        // Joining an existing session that already has a schedule
+        setItems(recalculate(room.schedule, Date.now()));
+        setCurrentIndex(room.currentIndex);
+      }
+      // If schedule is empty the operator just created the session —
+      // they'll push their loaded schedule via sendSchedule
     });
 
     socket.on('room:users', setUsers);
