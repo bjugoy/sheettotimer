@@ -17,7 +17,11 @@ interface Props {
 }
 
 export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLabel = '← Back', onScheduleLoaded }: Props) {
-  const { parseResult, error: parseError, loading, parseFile, parseFromData, reset } = useFileParser();
+  const {
+    parseResult, error: parseError, loading,
+    parseFile, parseFromData, reset,
+    headerRowIdx, setHeaderRow, totalRows, rawPreview,
+  } = useFileParser();
   const { fetchSheet, syncError } = useGoogleSheets();
   const setItems        = useScheduleStore(s => s.setItems);
   const setColumnMapping = useScheduleStore(s => s.setColumnMapping);
@@ -68,7 +72,16 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLab
               <p className="text-xs text-warm-500 mb-4">
                 {parseResult.rows.length} rows detected — confirm column assignments
               </p>
-              <ColumnMapper parseResult={parseResult} onConfirm={handleConfirm} onBack={reset} />
+              <ColumnMapper
+                key={headerRowIdx}
+                parseResult={parseResult}
+                onConfirm={handleConfirm}
+                onBack={reset}
+                headerRowIdx={headerRowIdx}
+                totalRows={totalRows}
+                rawPreview={rawPreview}
+                onHeaderRowChange={setHeaderRow}
+              />
             </>
           ) : (
             <>

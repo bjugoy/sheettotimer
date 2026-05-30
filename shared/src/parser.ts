@@ -120,6 +120,39 @@ export function parseDuration(raw: string | number | null | undefined): number {
   return NaN;
 }
 
+// ─── Header row detection ────────────────────────────────────────────────────
+
+/**
+ * Scan the raw AOA for the best header row index.
+ *
+ * Priority:
+ *   1. First row whose cells contain scheduling keywords (time/start/end/duration)
+ *   2. First row with actual time data → the row above it is the header
+ *   3. First non-empty row (original fallback)
+ */
+export function detectHeaderRow(aoa: (string | number | null)[][]): number {
+  const limit = Math.min(20, aoa.length);
+
+  // Pass 1: keyword scan — "Start Time", "End Time", "Duration" etc.
+  for (let i = 0; i < limit; i++) {
+    if (aoa[i].some(cell =>
+      typeof cell === 'string' && /\b(time|start|end|duration)\b/i.test(cell)
+    )) return i;
+  }
+
+  // Pass 2: first row with time data → header must be the row above it
+  for (let i = 0; i < limit; i++) {
+    if (aoa[i].some(cell => isTimeValue(cell))) return Math.max(0, i - 1);
+  }
+
+  // Fallback: first non-empty row
+  for (let i = 0; i < Math.min(5, aoa.length); i++) {
+    if (aoa[i].some(cell => cell !== null && cell !== '')) return i;
+  }
+
+  return 0;
+}
+
 // ─── Column auto-detection ───────────────────────────────────────────────────
 
 const TIME_HINTS = /start|begin|time|from|at/i;

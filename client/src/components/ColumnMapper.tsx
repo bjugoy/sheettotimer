@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
-import { CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, AlertTriangle, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
 import type { ParseResult, ColumnMapping, ColumnRole } from '@program-timer/shared';
 import { rowsToSchedule, isTimeValue } from '@program-timer/shared';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
-  parseResult: ParseResult;
-  onConfirm: (mapping: ColumnMapping[], items: ReturnType<typeof rowsToSchedule>['items']) => void;
-  onBack: () => void;
+  parseResult:        ParseResult;
+  onConfirm:          (mapping: ColumnMapping[], items: ReturnType<typeof rowsToSchedule>['items']) => void;
+  onBack:             () => void;
+  // Row picker (optional — not available for Google Sheets path)
+  headerRowIdx?:      number;
+  totalRows?:         number;
+  rawPreview?:        (string | number | null)[][];
+  onHeaderRowChange?: (idx: number) => void;
 }
 
 const ROLE_LABELS: Record<ColumnRole, string> = {
@@ -27,7 +32,7 @@ const ROLE_STYLE: Record<ColumnRole, { border: string; bg: string; badge: string
   duration:  { border: 'border-t-moss-500',     bg: 'bg-moss-950/30',     badge: 'bg-moss-900/60 text-moss-300 border-moss-700/50',           text: 'text-moss-300'     },
   title:     { border: 'border-t-warm-300',     bg: 'bg-warm-800/40',     badge: 'bg-warm-700/60 text-warm-200 border-warm-600/50',           text: 'text-warm-200'     },
   notes:     { border: 'border-t-warm-600',     bg: 'bg-warm-900/30',     badge: 'bg-warm-800/60 text-warm-400 border-warm-700/40',           text: 'text-warm-400'     },
-  ignore:    { border: 'border-t-warm-800',     bg: 'bg-warm-900/20',     badge: 'bg-warm-900/40 text-warm-700 border-warm-800/40',           text: 'text-warm-700'     },
+  ignore:    { border: 'border-t-warm-800',     bg: 'bg-warm-900/20',     badge: 'bg-warm-900/40 text-warm-600 border-warm-800/40',           text: 'text-warm-600'     },
 };
 
 type DurationUnit = 'auto' | 'min' | 'h' | 's';
@@ -39,7 +44,6 @@ const DURATION_UNIT_LABELS: Record<DurationUnit, string> = {
   s:    'Plain numbers = seconds (e.g. 3600)',
 };
 
-// For time columns skip non-time rows (decoration, section headers, etc.)
 function getSamples(rows: ParseResult['rows'], sourceKey: string, role: ColumnRole): string[] {
   const isTimeCol = role === 'startTime' || role === 'endTime';
   const out: string[] = [];
@@ -53,7 +57,6 @@ function getSamples(rows: ParseResult['rows'], sourceKey: string, role: ColumnRo
   return out;
 }
 
-// Check if a startTime column's sample values contain time ranges like "9:00-10:00"
 function detectTimeRanges(rows: ParseResult['rows'], sourceKey: string): boolean {
   return rows.slice(0, 8).some(row => {
     const val = row[sourceKey];
@@ -61,15 +64,83 @@ function detectTimeRanges(rows: ParseResult['rows'], sourceKey: string): boolean
   });
 }
 
-export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
-  const [mapping, setMapping]       = useState<ColumnMapping[]>(parseResult.suggestedMapping);
+// ── Row preview table ────────────────────────────────────────────────────────
+
+function RowPreview({
+  rawPreview,
+  headerRowIdx,
+}: {
+  rawPreview: (string | number | null)[][];
+  headerRowIdx: number;
+}) {
+  const firstRow  = Math.max(0, headerRowIdx - 2);
+  const lastRow   = Math.min(rawPreview.length - 1, headerRowIdx + 3);
+  const MAX_COLS  = 5;
+
+  const truncate = (val: string | number | null) => {
+    if (val === null || val === undefined) return '';
+    const s = String(val);
+    return s.length > 16 ? s.slice(0, 14) + '…' : s;
+  };
+
+  return (
+    <div className="mt-2 rounded-lg overflow-hidden border border-warm-800/50 text-[10px] font-mono select-none">
+      {Array.from({ length: lastRow - firstRow + 1 }, (_, i) => {
+        const rowIdx   = firstRow + i;
+        const row      = rawPreview[rowIdx] ?? [];
+        const isHeader = rowIdx === headerRowIdx;
+        const isAbove  = rowIdx < headerRowIdx;
+
+        return (
+          <div key={rowIdx} className={cn(
+            'flex items-stretch border-b border-warm-800/30 last:border-b-0',
+            isHeader ? 'bg-crimson-900/30' : isAbove ? 'opacity-35' : 'bg-warm-900/10'
+          )}>
+            {/* Row number */}
+            <div className={cn(
+              'px-2 py-1 shrink-0 border-r border-warm-800/30 w-8 text-center leading-4',
+              isHeader ? 'text-crimson-400 font-bold' : 'text-warm-700'
+            )}>
+              {rowIdx + 1}
+            </div>
+            {/* Cells */}
+            {Array.from({ length: MAX_COLS }, (_, ci) => (
+              <div key={ci} className={cn(
+                'px-2 py-1 border-r border-warm-800/20 w-[110px] truncate leading-4',
+                isHeader ? 'text-crimson-200 font-semibold' : isAbove ? 'text-warm-600' : 'text-warm-400'
+              )}>
+                {truncate(row[ci]) || <span className="text-warm-800">—</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export function ColumnMapper({
+  parseResult,
+  onConfirm,
+  onBack,
+  headerRowIdx,
+  totalRows,
+  rawPreview,
+  onHeaderRowChange,
+}: Props) {
+  const [mapping, setMapping]           = useState<ColumnMapping[]>(parseResult.suggestedMapping);
   const [durationUnit, setDurationUnit] = useState<DurationUnit>('auto');
+
+  // Reset mapping when the parse result changes (e.g. user changed header row)
+  useEffect(() => {
+    setMapping(parseResult.suggestedMapping);
+  }, [parseResult.suggestedMapping]);
 
   const setRole = (sourceKey: string, role: ColumnRole) =>
     setMapping(prev => prev.map(m => m.sourceKey === sourceKey ? { ...m, role } : m));
 
-
-  // ── Validation ─────────────────────────────────────────────────────────────
   const hasTitle    = mapping.some(m => m.role === 'title');
   const hasStart    = mapping.some(m => m.role === 'startTime');
   const hasEnd      = mapping.some(m => m.role === 'endTime');
@@ -80,10 +151,8 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
   const canConfirm  = hasTitle && hasStart && hasTimeInfo;
 
   const handleConfirm = () => {
-    // Apply duration unit transform if user specified one
     let rows = parseResult.rows;
     const durKey = mapping.find(m => m.role === 'duration')?.sourceKey;
-
     if (durKey && durationUnit !== 'auto') {
       const factor = durationUnit === 'h' ? 60 : durationUnit === 's' ? 1 / 60 : 1;
       rows = rows.map(row => {
@@ -92,7 +161,6 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
         return row;
       });
     }
-
     const { items } = rowsToSchedule(rows, mapping);
     if (items.length === 0) {
       alert('No valid schedule items could be parsed. Check that Start Time and Title are assigned correctly.');
@@ -101,8 +169,51 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
     onConfirm(mapping, items);
   };
 
+  const showPicker = onHeaderRowChange !== undefined
+    && headerRowIdx !== undefined
+    && totalRows !== undefined
+    && totalRows > 0;
+
   return (
     <div className="space-y-5">
+
+      {/* ── Row picker ────────────────────────────────────────────────────── */}
+      {showPicker && (
+        <div className="rounded-lg border border-warm-800/50 bg-warm-900/40 px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-warm-400 uppercase tracking-wider">
+                Header row
+              </p>
+              <p className="text-[10px] text-warm-600 mt-0.5">
+                Row {headerRowIdx! + 1} of {totalRows} — data starts on row {headerRowIdx! + 2}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onHeaderRowChange!(headerRowIdx! - 1)}
+                disabled={headerRowIdx! <= 0}
+                className="w-7 h-7 flex items-center justify-center rounded border border-warm-700/50
+                  text-warm-400 hover:text-warm-200 hover:border-warm-600 transition-colors
+                  disabled:opacity-30 disabled:cursor-not-allowed bg-warm-800/40">
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onHeaderRowChange!(headerRowIdx! + 1)}
+                disabled={headerRowIdx! >= totalRows! - 2}
+                className="w-7 h-7 flex items-center justify-center rounded border border-warm-700/50
+                  text-warm-400 hover:text-warm-200 hover:border-warm-600 transition-colors
+                  disabled:opacity-30 disabled:cursor-not-allowed bg-warm-800/40">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {rawPreview && rawPreview.length > 0 && (
+            <RowPreview rawPreview={rawPreview} headerRowIdx={headerRowIdx!} />
+          )}
+        </div>
+      )}
 
       {/* Warnings */}
       {parseResult.warnings.map((w, i) => (
@@ -135,17 +246,15 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
                   style.border, style.bg
                 )}>
 
-                {/* Column header */}
                 <div className="px-3 py-2.5 border-b border-warm-800/40">
                   <p className="text-xs font-semibold text-warm-200 truncate" title={sourceKey}>
                     {sourceKey}
                   </p>
                   {isAutoDetected && (
-                    <span className="text-[9px] text-warm-600">✓ auto-detected</span>
+                    <span className="text-[9px] text-warm-500">✓ auto-detected</span>
                   )}
                 </div>
 
-                {/* Role selector */}
                 <div className="px-3 py-2 border-b border-warm-800/30">
                   <select
                     value={role}
@@ -164,10 +273,9 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
                   </select>
                 </div>
 
-                {/* Duration unit selector — shown only for duration columns */}
                 {isDurCol && (
                   <div className="px-3 py-2 border-b border-warm-800/30 bg-moss-950/20">
-                    <p className="text-[9px] text-moss-600 uppercase tracking-wider mb-1">Number format</p>
+                    <p className="text-[9px] text-moss-500 uppercase tracking-wider mb-1">Number format</p>
                     <select
                       value={durationUnit}
                       onChange={e => setDurationUnit(e.target.value as DurationUnit)}
@@ -180,17 +288,16 @@ export function ColumnMapper({ parseResult, onConfirm, onBack }: Props) {
                   </div>
                 )}
 
-                {/* Sample values */}
                 <div className="flex-1 px-3 py-2 space-y-1">
                   {samples.length > 0 ? samples.map((v, i) => (
                     <p key={i} className={cn(
                       'text-[11px] truncate font-mono',
-                      role === 'ignore' ? 'text-warm-800' : 'text-warm-500'
+                      role === 'ignore' ? 'text-warm-700' : 'text-warm-400'
                     )}>
                       {String(v)}
                     </p>
                   )) : (
-                    <p className="text-[11px] text-warm-800 italic">empty</p>
+                    <p className="text-[11px] text-warm-700 italic">empty</p>
                   )}
                 </div>
               </div>
