@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Radio, Users, Copy, Check, LogIn, Save, UserCircle, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { Radio, Users, Copy, Check, LogIn, Save, UserCircle, ArrowLeft, LayoutDashboard, Share2, X } from 'lucide-react';
 import { JoinRoom } from './components/JoinRoom';
 import { LoadSchedulePage } from './components/LoadSchedulePage';
 import { TimerView } from './components/TimerView';
@@ -53,7 +53,10 @@ export default function App() {
   const [showEditor, setShowEditor] = useState(false);
   const [showAuth, setShowAuth]     = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showShare, setShowShare]   = useState(false);
   const [copied, setCopied]         = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedUrl, setCopiedUrl]   = useState(false);
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
 
@@ -136,6 +139,22 @@ export default function App() {
     }
   };
 
+  const joinUrl = roomCode ? `${window.location.origin}?room=${roomCode}` : '';
+
+  const copyCode = () => {
+    if (!roomCode) return;
+    navigator.clipboard.writeText(roomCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const copyLink = () => {
+    if (!joinUrl) return;
+    navigator.clipboard.writeText(joinUrl);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
   const handleSyncToSheets = useCallback(async () => {
     if (spreadsheetId) await syncToSheet(spreadsheetId, items);
   }, [spreadsheetId, items, syncToSheet]);
@@ -194,41 +213,30 @@ export default function App() {
             </div>
           )}
 
-          {/* Event name + save — only when opened from dashboard */}
+          {/* Event name — only when opened from dashboard */}
           {fromDashboard && locState.eventName && (
             <div className="flex items-center gap-1.5">
               <span className="text-warm-800">·</span>
               <span className="text-[11px] text-warm-500 max-w-[160px] truncate">
                 {locState.eventName}
               </span>
-              {items.length > 0 && (
+              {/* Save — only visible while editor is open */}
+              {showEditor && items.length > 0 && (
                 <button onClick={handleSaveToEvent} disabled={saving}
-                  title="Save any schedule edits back to this event"
+                  title="Save schedule edits to this event"
                   className={cn(
                     'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition-colors',
                     savedOk
                       ? 'text-moss-300 bg-moss-900/30 border border-moss-700/40'
                       : 'text-warm-600 hover:text-warm-400 hover:bg-warm-800/60 border border-transparent'
                   )}>
-                  {savedOk
-                    ? <><Check className="w-3 h-3" /> Saved</>
-                    : <Save className="w-3 h-3" />}
+                  {savedOk ? <><Check className="w-3 h-3" /> Saved</> : <><Save className="w-3 h-3" /> Save</>}
                 </button>
               )}
             </div>
           )}
 
-          {roomCode && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-warm-800">·</span>
-              <span className="text-xs timer-display font-bold text-warm-400 tracking-widest">{roomCode}</span>
-              <button onClick={copyRoomCode}
-                className="text-warm-700 hover:text-warm-500 transition-colors" title="Copy join link">
-                {copied ? <Check className="w-3 h-3 text-moss-400" /> : <Copy className="w-3 h-3" />}
-              </button>
-            </div>
-          )}
-
+          {/* Users in room */}
           {users.length > 0 && (
             <div className="flex items-center gap-1 text-warm-600">
               <Users className="w-3 h-3" />
@@ -239,6 +247,82 @@ export default function App() {
 
         <div className="flex items-center gap-1">
           <div className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-moss-400' : 'bg-crimson-500')} />
+
+          {/* Share button — only shown when a room is active */}
+          {roomCode && (
+            <div className="relative ml-1">
+              <button
+                onClick={() => setShowShare(s => !s)}
+                className={cn(
+                  'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded transition-colors border',
+                  showShare
+                    ? 'bg-warm-800 text-warm-200 border-warm-700/60'
+                    : 'text-warm-500 hover:text-warm-200 hover:bg-warm-900 border-transparent'
+                )}>
+                <Share2 className="w-3 h-3" />
+                Share
+              </button>
+
+              {showShare && (
+                <>
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 z-40" onClick={() => setShowShare(false)} />
+                  {/* Panel */}
+                  <div className="absolute right-0 top-full mt-1 z-50 w-72
+                    bg-warm-900 border border-warm-700/60 rounded-xl shadow-2xl p-4 space-y-4">
+
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-warm-300">Share this session</p>
+                      <button onClick={() => setShowShare(false)} className="text-warm-600 hover:text-warm-300">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Room code */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-warm-600 uppercase tracking-wider">Room code</p>
+                      <div className="flex items-center gap-2">
+                        <span className="flex-1 font-mono font-bold text-xl text-warm-100 tracking-[0.25em]
+                          bg-warm-800/60 border border-warm-700/40 rounded-lg px-3 py-2 text-center">
+                          {roomCode}
+                        </span>
+                        <button onClick={copyCode}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-warm-800/60
+                            hover:bg-warm-700/60 border border-warm-700/40 rounded-lg
+                            text-xs text-warm-300 transition-colors shrink-0">
+                          {copiedCode ? <Check className="w-3.5 h-3.5 text-moss-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedCode ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Join link */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-warm-600 uppercase tracking-wider">Join link</p>
+                      <div className="flex items-center gap-2">
+                        <span className="flex-1 text-[11px] text-warm-500 bg-warm-800/40
+                          border border-warm-700/30 rounded-lg px-2.5 py-2 truncate font-mono">
+                          {joinUrl}
+                        </span>
+                        <button onClick={copyLink}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-warm-800/60
+                            hover:bg-warm-700/60 border border-warm-700/40 rounded-lg
+                            text-xs text-warm-300 transition-colors shrink-0">
+                          {copiedUrl ? <Check className="w-3.5 h-3.5 text-moss-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedUrl ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-warm-700 leading-relaxed">
+                      Viewers can join at <span className="text-warm-500">{window.location.origin}</span> and enter the room code,
+                      or open the join link directly.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {features.canUseEditor && (
             <button onClick={() => setShowEditor(s => !s)}
