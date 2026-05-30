@@ -248,81 +248,89 @@ export default function App() {
         <div className="flex items-center gap-1">
           <div className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-moss-400' : 'bg-crimson-500')} />
 
-          {/* Share button — only shown when a room is active */}
-          {roomCode && (
-            <div className="relative ml-1">
-              <button
-                onClick={() => setShowShare(s => !s)}
-                className={cn(
-                  'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded transition-colors border',
-                  showShare
-                    ? 'bg-warm-800 text-warm-200 border-warm-700/60'
-                    : 'text-warm-500 hover:text-warm-200 hover:bg-warm-900 border-transparent'
-                )}>
-                <Share2 className="w-3 h-3" />
-                Share
-              </button>
+          {/* Share — always visible in timer view */}
+          <div className="relative ml-1">
+            <button
+              onClick={() => setShowShare(s => !s)}
+              className={cn(
+                'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded transition-colors border',
+                showShare
+                  ? 'bg-warm-800 text-warm-200 border-warm-700/60'
+                  : 'text-warm-500 hover:text-warm-200 hover:bg-warm-900 border-transparent'
+              )}>
+              <Share2 className="w-3 h-3" />
+              Share
+            </button>
 
-              {showShare && (
-                <>
-                  {/* Backdrop */}
-                  <div className="fixed inset-0 z-40" onClick={() => setShowShare(false)} />
-                  {/* Panel */}
-                  <div className="absolute right-0 top-full mt-1 z-50 w-72
-                    bg-warm-900 border border-warm-700/60 rounded-xl shadow-2xl p-4 space-y-4">
+            {showShare && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowShare(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 w-72
+                  bg-warm-900 border border-warm-700/60 rounded-xl shadow-2xl p-4 space-y-4">
 
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-warm-300">Share this session</p>
-                      <button onClick={() => setShowShare(false)} className="text-warm-600 hover:text-warm-300">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Room code */}
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] text-warm-600 uppercase tracking-wider">Room code</p>
-                      <div className="flex items-center gap-2">
-                        <span className="flex-1 font-mono font-bold text-xl text-warm-100 tracking-[0.25em]
-                          bg-warm-800/60 border border-warm-700/40 rounded-lg px-3 py-2 text-center">
-                          {roomCode}
-                        </span>
-                        <button onClick={copyCode}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-warm-800/60
-                            hover:bg-warm-700/60 border border-warm-700/40 rounded-lg
-                            text-xs text-warm-300 transition-colors shrink-0">
-                          {copiedCode ? <Check className="w-3.5 h-3.5 text-moss-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          {copiedCode ? 'Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Join link */}
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] text-warm-600 uppercase tracking-wider">Join link</p>
-                      <div className="flex items-center gap-2">
-                        <span className="flex-1 text-[11px] text-warm-500 bg-warm-800/40
-                          border border-warm-700/30 rounded-lg px-2.5 py-2 truncate font-mono">
-                          {joinUrl}
-                        </span>
-                        <button onClick={copyLink}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-warm-800/60
-                            hover:bg-warm-700/60 border border-warm-700/40 rounded-lg
-                            text-xs text-warm-300 transition-colors shrink-0">
-                          {copiedUrl ? <Check className="w-3.5 h-3.5 text-moss-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          {copiedUrl ? 'Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] text-warm-700 leading-relaxed">
-                      Viewers can join at <span className="text-warm-500">{window.location.origin}</span> and enter the room code,
-                      or open the join link directly.
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-warm-300">Share this session</p>
+                    <button onClick={() => setShowShare(false)} className="text-warm-600 hover:text-warm-300">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </>
-              )}
-            </div>
-          )}
+
+                  {roomCode ? (
+                    <>
+                      {/* Room code */}
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Room code</p>
+                        <div className="flex items-center gap-2">
+                          <span className="flex-1 font-mono font-bold text-xl text-warm-100 tracking-[0.25em]
+                            bg-warm-800/60 border border-warm-700/40 rounded-lg px-3 py-2 text-center">
+                            {roomCode}
+                          </span>
+                          <button onClick={copyCode}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-warm-800/60
+                              hover:bg-warm-700/60 border border-warm-700/40 rounded-lg
+                              text-xs text-warm-300 transition-colors shrink-0">
+                            {copiedCode ? <Check className="w-3.5 h-3.5 text-moss-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedCode ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Join link */}
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] text-warm-600 uppercase tracking-wider">Join link</p>
+                        <div className="flex items-center gap-2">
+                          <span className="flex-1 text-[11px] text-warm-500 bg-warm-800/40
+                            border border-warm-700/30 rounded-lg px-2.5 py-2 truncate font-mono">
+                            {joinUrl}
+                          </span>
+                          <button onClick={copyLink}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-warm-800/60
+                              hover:bg-warm-700/60 border border-warm-700/40 rounded-lg
+                              text-xs text-warm-300 transition-colors shrink-0">
+                            {copiedUrl ? <Check className="w-3.5 h-3.5 text-moss-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedUrl ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-warm-700 leading-relaxed">
+                        Viewers open <span className="text-warm-500">{window.location.origin}</span> and enter the code, or use the join link directly.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs text-warm-400 leading-relaxed">
+                        You're running solo. To invite viewers, create a room first — then share the code or link with your crew.
+                      </p>
+                      <p className="text-[10px] text-warm-600 leading-relaxed">
+                        Go to <span className="text-warm-400">Join screen</span> → <span className="text-warm-400">Create room</span> to get a shareable code.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
           {features.canUseEditor && (
             <button onClick={() => setShowEditor(s => !s)}
