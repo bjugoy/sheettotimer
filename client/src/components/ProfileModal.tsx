@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Radio, Mail, CreditCard, Trash2, Check, Pencil } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useScheduleStore } from '../store/scheduleStore';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
 import { cn } from '../utils/timeUtils';
 
@@ -21,6 +22,7 @@ export function ProfileModal({ onClose }: Props) {
   const user              = useAuthStore(s => s.user);
   const plan              = useAuthStore(s => s.plan);
   const signOut           = useAuthStore(s => s.signOut);
+  const clearSchedule     = useScheduleStore(s => s.clearAll);
   const updateDisplayName = useAuthStore(s => s.updateDisplayName);
   const deleteAccount     = useAuthStore(s => s.deleteAccount);
 
@@ -66,7 +68,8 @@ export function ProfileModal({ onClose }: Props) {
   };
 
   const handleSignOut = async () => {
-    await signOut();
+    await signOut();       // already try/catches internally
+    clearSchedule();       // wipe persisted timer data before the next user logs in
     onClose();
     navigate('/landing', { replace: true });
   };

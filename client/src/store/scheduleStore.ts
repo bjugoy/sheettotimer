@@ -49,6 +49,7 @@ interface ScheduleState {
   setSpreadsheetId: (id: string | null) => void;
   setGoogleAuthenticated: (v: boolean) => void;
 
+  clearAll: () => void;
   pause: () => void;
   resume: () => void;
   setActiveEventId: (id: string | null) => void;
@@ -260,6 +261,13 @@ export const useScheduleStore = create<ScheduleState>()(
 
       setSpreadsheetId: (spreadsheetId) => set({ spreadsheetId }),
       setGoogleAuthenticated: (googleAuthenticated) => set({ googleAuthenticated }),
+
+      clearAll: () => set({
+        items: [], baseItems: [], currentIndex: 0,
+        isPaused: false, pausedAt: undefined,
+        activeEventId: null, timerStates: {},
+        columnMapping: [],
+      }),
 
       recalc: () => set({ items: recalculate(get().items, Date.now()) }),
     }),

@@ -109,7 +109,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    try { await supabase.auth.signOut(); } catch { /* ignore network errors */ }
     set({ user: null, session: null, plan: 'free' });
   },
 
