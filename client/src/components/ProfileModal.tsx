@@ -23,6 +23,18 @@ export function ProfileModal({ onClose }: Props) {
   const plan              = useAuthStore(s => s.plan);
   const signOut           = useAuthStore(s => s.signOut);
   const clearSchedule     = useScheduleStore(s => s.clearAll);
+  const liveItems         = useScheduleStore(s => s.items);
+  const activeEventId     = useScheduleStore(s => s.activeEventId);
+  const timerStates       = useScheduleStore(s => s.timerStates);
+
+  // A timer is "live" if the active event has a running item, or any saved
+  // timer state has an active item (background events)
+  const activeLiveCount = [
+    liveItems.some(i => i.status === 'active') ? activeEventId : null,
+    ...Object.entries(timerStates)
+      .filter(([id, s]) => id !== activeEventId && s.items.some(i => i.status === 'active'))
+      .map(([id]) => id),
+  ].filter(Boolean).length;
   const updateDisplayName = useAuthStore(s => s.updateDisplayName);
   const deleteAccount     = useAuthStore(s => s.deleteAccount);
 
@@ -31,9 +43,10 @@ export function ProfileModal({ onClose }: Props) {
   const [nameLoading, setNameLoading] = useState(false);
   const [nameError, setNameError]     = useState('');
 
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteError, setDeleteError]     = useState('');
+  const [confirmDelete, setConfirmDelete]   = useState(false);
+  const [deleteLoading, setDeleteLoading]   = useState(false);
+  const [deleteError, setDeleteError]       = useState('');
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   const planFeatures = getPlanFeatures(plan);
   const badgeCls     = PLAN_BADGE_COLOR[plan];
@@ -67,11 +80,19 @@ export function ProfileModal({ onClose }: Props) {
     navigate('/landing', { replace: true });
   };
 
-  const handleSignOut = async () => {
-    await signOut();       // already try/catches internally
-    clearSchedule();       // wipe persisted timer data before the next user logs in
+  const doSignOut = async () => {
+    await signOut();
+    clearSchedule();
     onClose();
     navigate('/landing', { replace: true });
+  };
+
+  const handleSignOut = () => {
+    if (activeLiveCount > 0) {
+      setConfirmSignOut(true);
+    } else {
+      void doSignOut();
+    }
   };
 
   const inputCls = 'w-full bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5 text-sm text-warm-200 placeholder-warm-700 focus:outline-none focus:border-crimson-700/60 transition-colors';
@@ -219,12 +240,36 @@ export function ProfileModal({ onClose }: Props) {
 
         {/* Footer */}
         <div className="px-5 pb-5">
-          <button
-            onClick={handleSignOut}
-            className="w-full py-2 border border-warm-700/50 rounded-lg text-xs
-              text-warm-400 hover:text-warm-200 hover:border-warm-600/60 transition-colors">
-            Sign out
-          </button>
+          {confirmSignOut ? (
+            <div className="space-y-3 p-3 bg-amber-950/40 border border-amber-800/40 rounded-lg">
+              <p className="text-xs text-warm-300 leading-relaxed">
+                {activeLiveCount === 1
+                  ? 'You have a live timer running.'
+                  : `You have ${activeLiveCount} live timers running.`}
+                {' '}Signing out will stop {activeLiveCount === 1 ? 'it' : 'them'}.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void doSignOut()}
+                  className="flex-1 py-1.5 bg-warm-800/60 hover:bg-warm-700/60
+                    border border-warm-700/50 text-warm-200 text-xs rounded transition-colors">
+                  Sign out anyway
+                </button>
+                <button
+                  onClick={() => setConfirmSignOut(false)}
+                  className="px-3 py-1.5 text-xs text-warm-400 hover:text-warm-200 transition-colors">
+                  Keep running
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleSignOut}
+              className="w-full py-2 border border-warm-700/50 rounded-lg text-xs
+                text-warm-400 hover:text-warm-200 hover:border-warm-600/60 transition-colors">
+              Sign out
+            </button>
+          )}
         </div>
       </div>
     </div>
