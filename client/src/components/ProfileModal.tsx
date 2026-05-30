@@ -83,7 +83,7 @@ export function ProfileModal({ onClose }: Props) {
             <Radio className="w-4 h-4 text-crimson-400" />
             <span className="text-sm font-semibold text-warm-200">Account</span>
           </div>
-          <button onClick={onClose} className="text-warm-700 hover:text-warm-400 transition-colors">
+          <button onClick={onClose} className="text-warm-500 hover:text-warm-200 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -121,7 +121,7 @@ export function ProfileModal({ onClose }: Props) {
                     </button>
                     <button
                       onClick={() => { setEditingName(false); setNameValue(user?.user_metadata?.full_name ?? ''); }}
-                      className="text-[11px] text-warm-700 hover:text-warm-400 transition-colors">
+                      className="text-[11px] text-warm-400 hover:text-warm-200 transition-colors">
                       Cancel
                     </button>
                   </div>
@@ -131,21 +131,21 @@ export function ProfileModal({ onClose }: Props) {
                   <span className="text-sm font-medium text-warm-200 truncate">{displayName}</span>
                   <button
                     onClick={() => setEditingName(true)}
-                    className="text-warm-700 hover:text-warm-400 transition-colors shrink-0">
+                    className="text-warm-500 hover:text-warm-200 transition-colors shrink-0">
                     <Pencil className="w-3 h-3" />
                   </button>
                 </div>
               )}
               <div className="flex items-center gap-1.5 mt-0.5">
-                <Mail className="w-3 h-3 text-warm-700 shrink-0" />
-                <span className="text-[11px] text-warm-600 truncate">{user?.email}</span>
+                <Mail className="w-3 h-3 text-warm-500 shrink-0" />
+                <span className="text-[11px] text-warm-400 truncate">{user?.email}</span>
               </div>
               <div className="mt-1">
                 <span className={cn(
                   'text-[9px] px-1.5 py-0.5 rounded border font-medium tracking-wide uppercase',
                   isGoogle
                     ? 'text-blue-300/80 bg-blue-900/20 border-blue-800/30'
-                    : 'text-warm-600 bg-warm-800/50 border-warm-700/40'
+                    : 'text-warm-400 bg-warm-800/50 border-warm-700/40'
                 )}>
                   {isGoogle ? 'via Google' : 'Email account'}
                 </span>
@@ -155,28 +155,28 @@ export function ProfileModal({ onClose }: Props) {
 
           {/* Subscription */}
           <div className="space-y-2 pt-1 border-t border-warm-800/40">
-            <p className="text-[10px] font-semibold text-warm-600 uppercase tracking-wider">Subscription</p>
+            <p className="text-[10px] font-semibold text-warm-500 uppercase tracking-wider">Subscription</p>
             <div className="flex items-center gap-2">
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', badgeCls)}>
                 {planFeatures.label}
               </span>
-              <span className="text-xs text-warm-600">{PLAN_DESCRIPTION[plan]}</span>
+              <span className="text-xs text-warm-400">{PLAN_DESCRIPTION[plan]}</span>
             </div>
             <button
               disabled
               title="Subscription management coming soon"
               className="w-full flex items-center justify-center gap-2 py-2 mt-1
-                bg-warm-800/40 border border-warm-700/30 rounded-lg text-xs text-warm-600
+                bg-warm-800/40 border border-warm-700/30 rounded-lg text-xs text-warm-400
                 cursor-not-allowed opacity-60">
               <CreditCard className="w-3.5 h-3.5" />
               Manage subscription
-              <span className="ml-auto text-[9px] text-warm-700 uppercase tracking-wide">Soon</span>
+              <span className="ml-auto text-[9px] text-warm-500 uppercase tracking-wide">Soon</span>
             </button>
           </div>
 
           {/* Danger zone */}
           <div className="space-y-2 pt-1 border-t border-warm-800/40">
-            <p className="text-[10px] font-semibold text-warm-600 uppercase tracking-wider">Account</p>
+            <p className="text-[10px] font-semibold text-warm-500 uppercase tracking-wider">Account</p>
 
             {confirmDelete ? (
               <div className="space-y-3 p-3 bg-crimson-950/60 border border-crimson-800/40 rounded-lg">
@@ -195,7 +195,7 @@ export function ProfileModal({ onClose }: Props) {
                   </button>
                   <button
                     onClick={() => { setConfirmDelete(false); setDeleteError(''); }}
-                    className="px-3 py-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors">
+                    className="px-3 py-1.5 text-xs text-warm-400 hover:text-warm-200 transition-colors">
                     Cancel
                   </button>
                 </div>
@@ -204,7 +204,7 @@ export function ProfileModal({ onClose }: Props) {
               <button
                 onClick={() => setConfirmDelete(true)}
                 className="w-full flex items-center gap-2 py-2 px-3
-                  text-warm-600 hover:text-crimson-300 hover:bg-crimson-950/40
+                  text-warm-400 hover:text-crimson-300 hover:bg-crimson-950/40
                   border border-transparent hover:border-crimson-800/30
                   rounded-lg text-xs transition-colors">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -218,8 +218,8 @@ export function ProfileModal({ onClose }: Props) {
         <div className="px-5 pb-5">
           <button
             onClick={handleSignOut}
-            className="w-full py-2 border border-warm-800/50 rounded-lg text-xs
-              text-warm-600 hover:text-warm-300 hover:border-warm-700/60 transition-colors">
+            className="w-full py-2 border border-warm-700/50 rounded-lg text-xs
+              text-warm-400 hover:text-warm-200 hover:border-warm-600/60 transition-colors">
             Sign out
           </button>
         </div>
