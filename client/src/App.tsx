@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Radio, Users, Copy, Check, LogIn, Save, UserCircle } from 'lucide-react';
+import { Radio, Users, Copy, Check, LogIn, Save, UserCircle, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { JoinRoom } from './components/JoinRoom';
 import { LoadSchedulePage } from './components/LoadSchedulePage';
 import { TimerView } from './components/TimerView';
@@ -179,10 +179,44 @@ export default function App() {
         border-b border-warm-800/50 bg-warm-900/60">
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-warm-500">
-            <Radio className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold text-warm-400 tracking-wide">SheetToTimer</span>
-          </div>
+          {/* Left anchor — Dashboard back-button when opened from dashboard, logo otherwise */}
+          {fromDashboard ? (
+            <button onClick={goBack}
+              className="flex items-center gap-1.5 text-warm-500 hover:text-warm-200 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">Dashboard</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 text-warm-500">
+              <Radio className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold text-warm-400 tracking-wide">SheetToTimer</span>
+            </div>
+          )}
+
+          {/* Event name + save — only when opened from dashboard */}
+          {fromDashboard && locState.eventName && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-warm-800">·</span>
+              <span className="text-[11px] text-warm-500 max-w-[160px] truncate">
+                {locState.eventName}
+              </span>
+              {items.length > 0 && (
+                <button onClick={handleSaveToEvent} disabled={saving}
+                  title="Save any schedule edits back to this event"
+                  className={cn(
+                    'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition-colors',
+                    savedOk
+                      ? 'text-moss-300 bg-moss-900/30 border border-moss-700/40'
+                      : 'text-warm-600 hover:text-warm-400 hover:bg-warm-800/60 border border-transparent'
+                  )}>
+                  {savedOk
+                    ? <><Check className="w-3 h-3" /> Saved</>
+                    : <Save className="w-3 h-3" />}
+                </button>
+              )}
+            </div>
+          )}
 
           {roomCode && (
             <div className="flex items-center gap-1.5">
@@ -196,33 +230,9 @@ export default function App() {
           )}
 
           {users.length > 0 && (
-            <div className="flex items-center gap-1 text-warm-700">
+            <div className="flex items-center gap-1 text-warm-600">
               <Users className="w-3 h-3" />
               <span className="text-[10px]">{users.length}</span>
-            </div>
-          )}
-
-          {/* Event name + save button — shown when timer was opened from dashboard */}
-          {fromDashboard && locState.eventName && (
-            <div className="flex items-center gap-2">
-              <span className="text-warm-800">·</span>
-              <span className="text-[11px] text-warm-600 max-w-[140px] truncate">
-                {locState.eventName}
-              </span>
-              {items.length > 0 && (
-                <button onClick={handleSaveToEvent} disabled={saving}
-                  title="Save schedule to this event"
-                  className={cn(
-                    'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded transition-colors',
-                    savedOk
-                      ? 'text-moss-300 bg-moss-900/30 border border-moss-700/40'
-                      : 'text-warm-500 hover:text-warm-300 hover:bg-warm-800 border border-transparent'
-                  )}>
-                  {savedOk
-                    ? <><Check className="w-3 h-3" /> Saved</>
-                    : <><Save className="w-3 h-3" /> {saving ? 'Saving…' : 'Save'}</>}
-                </button>
-              )}
             </div>
           )}
         </div>
