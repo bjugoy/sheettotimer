@@ -53,6 +53,9 @@ export default function App() {
   const initialView: AppView = (fromDashboard || items.length > 0) ? 'load' : 'join';
 
   const [view, setView]             = useState<AppView>(initialView);
+  // True while we're resolving which event to load — prevents stale persisted
+  // items from auto-navigating to the timer before the correct event is ready
+  const [eventSwitching, setEventSwitching] = useState(fromDashboard);
   const [showEditor, setShowEditor] = useState(false);
   const [showAuth, setShowAuth]     = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -72,8 +75,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (items.length > 0 && view === 'load') setView('timer');
-  }, [items.length]);
+    if (items.length > 0 && view === 'load' && !eventSwitching) setView('timer');
+  }, [items.length, eventSwitching]);
 
   useEffect(() => {
     if (roomCode && view === 'join') setView(items.length > 0 ? 'timer' : 'load');
@@ -113,6 +116,7 @@ export default function App() {
 
     if (isAlreadyLoaded) {
       setActiveEventId(locState.eventId);
+      setEventSwitching(false);
       return;
     }
 
@@ -124,7 +128,10 @@ export default function App() {
     setActiveEventId(locState.eventId);
 
     // Try to restore a previously saved timer for this event
-    if (loadTimer(locState.eventId)) return;
+    if (loadTimer(locState.eventId)) {
+      setEventSwitching(false);
+      return;
+    }
 
     // No saved state — load from Supabase or show upload page
     setItems([]);
@@ -132,6 +139,7 @@ export default function App() {
       if (event?.schedule && event.schedule.length > 0) {
         setItems(event.schedule);
       }
+      setEventSwitching(false);
     });
   }, [locState.eventId]);
 
