@@ -104,13 +104,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   deleteAccount: async () => {
     const { session } = get();
     if (!session?.access_token) return 'Not authenticated';
-    const res = await fetch(apiUrl('/api/account'), {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({})) as { error?: string };
-      return body.error ?? 'Failed to delete account';
+    try {
+      const res = await fetch(apiUrl('/api/account'), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        return body.error ?? `Server error (${res.status})`;
+      }
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Network error — could not reach server';
     }
     await supabase.auth.signOut();
     set({ user: null, session: null, plan: 'free' });
