@@ -77,34 +77,33 @@ export default function App() {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
   }, [features.canUseEditor]);
 
-  // Load schedule when opening an event from the dashboard
-  const setItems = useScheduleStore(s => s.setItems);
+  // Load / save per-event timer state when navigating between events
+  const setItems    = useScheduleStore(s => s.setItems);
+  const saveTimer   = useScheduleStore(s => s.saveTimer);
+  const loadTimer   = useScheduleStore(s => s.loadTimer);
   useEffect(() => {
     if (!fromDashboard || !locState.eventId) return;
 
     const store = useScheduleStore.getState();
-    const isSameRunningEvent =
-      locState.eventId === store.activeEventId &&
-      store.items.some(i => i.status === 'active' || i.status === 'done');
+    const prevId = store.activeEventId;
 
-    // Always update which event the dashboard badge tracks
-    setActiveEventId(locState.eventId);
-
-    if (isSameRunningEvent) {
-      // Returning to the same live event — persisted timer state is already correct,
-      // the items.length effect will move the view to 'timer' automatically
-      return;
+    // Save whatever is running before switching away
+    if (prevId && prevId !== locState.eventId) {
+      saveTimer(prevId);
     }
 
-    // Opening a different (or not-yet-started) event: clear old items first so the
-    // store doesn't show a stale schedule if Supabase returns an empty schedule
-    setItems([]);
+    setActiveEventId(locState.eventId);
 
+    // Try to restore a previously saved timer for this event
+    const restored = loadTimer(locState.eventId);
+    if (restored) return; // items.length effect will navigate to 'timer'
+
+    // No saved state — load the schedule from Supabase (or show upload page)
+    setItems([]);
     getEvent(locState.eventId).then(event => {
       if (event?.schedule && event.schedule.length > 0) {
         setItems(event.schedule);
       }
-      // No saved schedule → items stay empty → user sees the upload page
     });
   }, [locState.eventId]);
 

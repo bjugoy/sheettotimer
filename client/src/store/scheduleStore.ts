@@ -3,6 +3,14 @@ import { persist } from 'zustand/middleware';
 import type { ScheduleItem, ColumnMapping } from '@program-timer/shared';
 import { recalculate } from '@program-timer/shared';
 
+interface PerEventTimerState {
+  items: ScheduleItem[];
+  baseItems: ScheduleItem[];
+  currentIndex: number;
+  isPaused: boolean;
+  pausedAt: number | undefined;
+}
+
 interface ScheduleState {
   items: ScheduleItem[];
   baseItems: ScheduleItem[];
@@ -14,6 +22,7 @@ interface ScheduleState {
   isPaused: boolean;
   pausedAt: number | undefined;
   activeEventId: string | null;
+  timerStates: Record<string, PerEventTimerState>;
 
   setItems: (items: ScheduleItem[]) => void;
   shiftToNow: () => void;
@@ -43,6 +52,8 @@ interface ScheduleState {
   pause: () => void;
   resume: () => void;
   setActiveEventId: (id: string | null) => void;
+  saveTimer: (eventId: string) => void;
+  loadTimer: (eventId: string) => boolean;
 
   recalc: () => void;
 }
@@ -60,6 +71,7 @@ export const useScheduleStore = create<ScheduleState>()(
       isPaused: false,
       pausedAt: undefined,
       activeEventId: null,
+      timerStates: {},
 
       setItems: (items) => set({ items, baseItems: items, currentIndex: 0, isPaused: false, pausedAt: undefined }),
 
@@ -192,6 +204,29 @@ export const useScheduleStore = create<ScheduleState>()(
 
       setActiveEventId: (activeEventId) => set({ activeEventId }),
 
+      saveTimer: (eventId) => {
+        const { items, baseItems, currentIndex, isPaused, pausedAt } = get();
+        set(s => ({
+          timerStates: {
+            ...s.timerStates,
+            [eventId]: { items, baseItems, currentIndex, isPaused, pausedAt },
+          },
+        }));
+      },
+
+      loadTimer: (eventId) => {
+        const saved = get().timerStates[eventId];
+        if (!saved || saved.items.length === 0) return false;
+        set({
+          items:        saved.items,
+          baseItems:    saved.baseItems,
+          currentIndex: saved.currentIndex,
+          isPaused:     saved.isPaused,
+          pausedAt:     saved.pausedAt,
+        });
+        return true;
+      },
+
       setWhatIfDuration: (id, durationMs) => {
         const items = get().items.map(item =>
           item.id === id ? { ...item, whatIfDurationMs: durationMs } : item
@@ -238,6 +273,7 @@ export const useScheduleStore = create<ScheduleState>()(
         activeEventId: state.activeEventId,
         isPaused:      state.isPaused,
         pausedAt:      state.pausedAt,
+        timerStates:   state.timerStates,
       }),
     }
   )
