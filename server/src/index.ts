@@ -10,7 +10,7 @@ import type {
   ScheduleItem,
 } from '@program-timer/shared';
 import { recalculate, PLAN_ROOM_CAPACITY } from '@program-timer/shared';
-import { verifyToken } from './auth';
+import { verifyToken, deleteUser } from './auth';
 import {
   createRoom,
   getRoom,
@@ -265,6 +265,18 @@ app.get('/auth/status', (req, res) => {
 
 app.post('/auth/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
+});
+
+// ─── REST: Account management ────────────────────────────────────────────────
+
+app.delete('/api/account', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const verified = await verifyToken(token);
+  if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
+  const ok = await deleteUser(verified.userId);
+  if (!ok) { res.status(500).json({ error: 'Failed to delete account' }); return; }
+  res.json({ ok: true });
 });
 
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────

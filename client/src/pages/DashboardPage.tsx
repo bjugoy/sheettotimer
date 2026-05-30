@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Radio, Plus, Folder, CalendarDays, LogOut,
-  ChevronRight, Trash2, Play, Loader2,
+  Radio, Plus, Folder, CalendarDays,
+  ChevronRight, Trash2, Play, Loader2, UserCircle,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
@@ -12,14 +12,16 @@ import {
 } from '../lib/db';
 import type { Production, Event } from '../lib/db';
 import { cn } from '../utils/timeUtils';
+import { ProfileModal } from '../components/ProfileModal';
 
 export function DashboardPage() {
   const navigate    = useNavigate();
   const user        = useAuthStore(s => s.user);
   const plan        = useAuthStore(s => s.plan);
-  const signOut     = useAuthStore(s => s.signOut);
   const features    = getPlanFeatures(plan);
   const badgeCls    = PLAN_BADGE_COLOR[plan];
+
+  const [showProfile, setShowProfile] = useState(false);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [prods, setProds]           = useState<Production[]>([]);
@@ -103,11 +105,6 @@ export function DashboardPage() {
     navigate('/app', { state: { from: 'dashboard', eventId: event.id, eventName: event.name } });
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/landing', { replace: true });
-  };
-
   const inputCls = 'w-full bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5 text-sm text-warm-200 placeholder-warm-700 focus:outline-none focus:border-crimson-700/60 transition-colors';
 
   return (
@@ -130,12 +127,11 @@ export function DashboardPage() {
           <span className={cn('text-[10px] px-2 py-0.5 rounded border', badgeCls)}>
             {getPlanFeatures(plan).label}
           </span>
-          <span className="text-xs text-warm-600 max-w-[160px] truncate">
-            {user?.user_metadata?.full_name || user?.email}
-          </span>
-          <button onClick={handleSignOut} title="Sign out"
-            className="text-warm-700 hover:text-warm-400 transition-colors">
-            <LogOut className="w-3.5 h-3.5" />
+          <button
+            onClick={() => setShowProfile(true)}
+            className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors max-w-[160px]">
+            <UserCircle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{user?.user_metadata?.full_name || user?.email}</span>
           </button>
         </div>
       </header>
@@ -325,6 +321,8 @@ export function DashboardPage() {
           )}
         </main>
       </div>
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   );
 }

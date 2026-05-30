@@ -3,6 +3,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import type { Plan } from '../lib/plans';
 import { supabase } from '../lib/supabase';
 import { configureRC } from '../lib/revenuecat';
+import { apiUrl } from '../lib/api';
 
 interface AuthState {
   user:           User | null;
@@ -11,14 +12,17 @@ interface AuthState {
   loading:        boolean;
   pendingPaywall: boolean;
 
-  initialize:  () => Promise<void>;
-  signIn:      (email: string, password: string) => Promise<string | null>;
-  signUp:      (email: string, password: string, name: string) => Promise<string | null>;
-  signOut:     () => Promise<void>;
-  getToken:     () => string | null;
-  clearPaywall: () => void;
-  setPlan:      (plan: Plan) => void;
-  refreshPlan:  () => Promise<void>;
+  initialize:         () => Promise<void>;
+  signIn:             (email: string, password: string) => Promise<string | null>;
+  signUp:             (email: string, password: string, name: string) => Promise<string | null>;
+  signInWithGoogle:   () => Promise<string | null>;
+  signOut:            () => Promise<void>;
+  updateDisplayName:  (name: string) => Promise<string | null>;
+  deleteAccount:      () => Promise<string | null>;
+  getToken:           () => string | null;
+  clearPaywall:       () => void;
+  setPlan:            (plan: Plan) => void;
+  refreshPlan:        () => Promise<void>;
 }
 
 async function fetchPlan(userId: string): Promise<Plan> {
@@ -50,9 +54,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (session?.user) {
         configureRC(session.user.id); // fire-and-forget — lazy loads RC SDK
         const plan = await fetchPlan(session.user.id);
-        const showPaywall = localStorage.getItem('stt-paywall') === '1';
-        if (showPaywall) localStorage.removeItem('stt-paywall');
-        set({ user: session.user, session, plan, pendingPaywall: showPaywall });
+
+        const emailPaywall = localStorage.getItem('stt-paywall') === '1';
+        if (emailPaywall) localStorage.removeItem('stt-paywall');
+
+        // New Google OAuth users: created_at ≈ last_sign_in_at (within 60s)
+        const created     = new Date(session.user.created_at).getTime();
+        const lastSignIn  = new Date(session.user.last_sign_in_at ?? session.user.created_at).getTime();
+        const isNewGoogle = _event === 'SIGNED_IN'
+          && session.user.app_metadata?.provider === 'google'
+          && Math.abs(lastSignIn - created) < 60_000;
+
+        set({ user: session.user, session, plan, pendingPaywall: emailPaywall || isNewGoogle });
       } else {
         set({ user: null, session: null, plan: 'free', pendingPaywall: false });
       }
@@ -71,6 +84,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       options: { data: { full_name: name } },
     });
     return error?.message ?? null;
+  },
+
+  signInWithGoogle: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    return error?.message ?? null;
+  },
+
+  updateDisplayName: async (name) => {
+    const { error, data } = await supabase.auth.updateUser({ data: { full_name: name } });
+    if (error) return error.message;
+    if (data.user) set({ user: data.user });
+    return null;
+  },
+
+  deleteAccount: async () => {
+    const { session } = get();
+    if (!session?.access_token) return 'Not authenticated';
+    const res = await fetch(apiUrl('/api/account'), {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      return body.error ?? 'Failed to delete account';
+    }
+    await supabase.auth.signOut();
+    set({ user: null, session: null, plan: 'free' });
+    return null;
   },
 
   signOut: async () => {

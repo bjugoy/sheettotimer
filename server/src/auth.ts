@@ -37,3 +37,9 @@ export async function verifyToken(token: string): Promise<VerifiedUser | null> {
     plan:   (profile?.plan as Plan) ?? 'free',
   };
 }
+
+export async function deleteUser(userId: string): Promise<boolean> {
+  if (!supabaseAdmin) return false;
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  return !error;
+}

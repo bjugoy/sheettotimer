@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Radio, Users, Copy, Check, LogIn, LogOut, Save } from 'lucide-react';
+import { Radio, Users, Copy, Check, LogIn, Save, UserCircle } from 'lucide-react';
 import { JoinRoom } from './components/JoinRoom';
 import { LoadSchedulePage } from './components/LoadSchedulePage';
 import { TimerView } from './components/TimerView';
 import { ScheduleEditor } from './components/ScheduleEditor';
 import { TeleprompterView } from './components/TeleprompterView';
 import { AuthModal } from './components/AuthModal';
+import { ProfileModal } from './components/ProfileModal';
 import { useScheduleStore } from './store/scheduleStore';
 import { useSessionStore } from './store/sessionStore';
 import { useAuthStore } from './store/authStore';
@@ -41,7 +42,6 @@ export default function App() {
 
   const authUser   = useAuthStore(s => s.user);
   const plan       = useAuthStore(s => s.plan);
-  const signOut    = useAuthStore(s => s.signOut);
   const features   = getPlanFeatures(plan);
 
   // If coming from dashboard or landing "try for free", skip the join screen
@@ -51,6 +51,7 @@ export default function App() {
   const [view, setView]             = useState<AppView>(initialView);
   const [showEditor, setShowEditor] = useState(false);
   const [showAuth, setShowAuth]     = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [copied, setCopied]         = useState(false);
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
@@ -110,11 +111,6 @@ export default function App() {
     if (spreadsheetId) await syncToSheet(spreadsheetId, items);
   }, [spreadsheetId, items, syncToSheet]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/landing', { replace: true });
-  };
-
   const goBack = () => {
     if (fromDashboard) navigate('/dashboard');
     else navigate('/landing');
@@ -125,7 +121,8 @@ export default function App() {
   if (view === 'join') return (
     <>
       <JoinRoom onSkip={() => setView('load')} onSignIn={() => setShowAuth(true)} />
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      {showAuth   && <AuthModal    onClose={() => setShowAuth(false)} />}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </>
   );
 
@@ -140,7 +137,8 @@ export default function App() {
           ? (loaded) => saveEventSchedule(locState.eventId!, loaded).catch(console.error)
           : undefined}
       />
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      {showAuth    && <AuthModal    onClose={() => setShowAuth(false)} />}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </>
   );
 
@@ -232,9 +230,9 @@ export default function App() {
                 className="text-[11px] text-warm-600 hover:text-warm-300 transition-colors max-w-[80px] truncate">
                 {authUser.user_metadata?.full_name || authUser.email?.split('@')[0]}
               </button>
-              <button onClick={handleSignOut} title="Sign out"
+              <button onClick={() => setShowProfile(true)} title="Account"
                 className="text-warm-700 hover:text-warm-400 transition-colors">
-                <LogOut className="w-3.5 h-3.5" />
+                <UserCircle className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
@@ -263,7 +261,8 @@ export default function App() {
         )}
       </main>
 
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      {showAuth    && <AuthModal    onClose={() => setShowAuth(false)} />}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   );
 }
