@@ -65,11 +65,6 @@ export default function App() {
     checkAuthStatus().then(setGoogleAuthenticated);
   }, []);
 
-  // Track which dashboard event is currently open so the dashboard can show a LIVE badge
-  useEffect(() => {
-    setActiveEventId(locState.eventId ?? null);
-  }, [locState.eventId]);
-
   useEffect(() => {
     if (items.length > 0 && view === 'load') setView('timer');
   }, [items.length]);
@@ -82,16 +77,34 @@ export default function App() {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
   }, [features.canUseEditor]);
 
-  // Load saved schedule when opening an event from the dashboard
+  // Load schedule when opening an event from the dashboard
   const setItems = useScheduleStore(s => s.setItems);
   useEffect(() => {
     if (!fromDashboard || !locState.eventId) return;
+
+    const store = useScheduleStore.getState();
+    const isSameRunningEvent =
+      locState.eventId === store.activeEventId &&
+      store.items.some(i => i.status === 'active' || i.status === 'done');
+
+    // Always update which event the dashboard badge tracks
+    setActiveEventId(locState.eventId);
+
+    if (isSameRunningEvent) {
+      // Returning to the same live event — persisted timer state is already correct,
+      // the items.length effect will move the view to 'timer' automatically
+      return;
+    }
+
+    // Opening a different (or not-yet-started) event: clear old items first so the
+    // store doesn't show a stale schedule if Supabase returns an empty schedule
+    setItems([]);
+
     getEvent(locState.eventId).then(event => {
       if (event?.schedule && event.schedule.length > 0) {
         setItems(event.schedule);
-        // setItems triggers the items.length effect → moves to 'timer'
       }
-      // If no saved schedule, stay on 'load' so user can upload
+      // No saved schedule → items stay empty → user sees the upload page
     });
   }, [locState.eventId]);
 
