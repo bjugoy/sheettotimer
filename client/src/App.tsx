@@ -87,7 +87,19 @@ export default function App() {
     const store = useScheduleStore.getState();
     const prevId = store.activeEventId;
 
-    // Save whatever is running before switching away
+    // Returning to the same event that's already live in the store —
+    // the persisted items/currentIndex are already correct, nothing to reload
+    const isAlreadyLoaded =
+      prevId === locState.eventId &&
+      store.items.length > 0 &&
+      store.items.some(i => i.status === 'active' || i.status === 'done');
+
+    if (isAlreadyLoaded) {
+      setActiveEventId(locState.eventId);
+      return;
+    }
+
+    // Leaving a different event — snapshot it before switching
     if (prevId && prevId !== locState.eventId) {
       saveTimer(prevId);
     }
@@ -95,10 +107,9 @@ export default function App() {
     setActiveEventId(locState.eventId);
 
     // Try to restore a previously saved timer for this event
-    const restored = loadTimer(locState.eventId);
-    if (restored) return; // items.length effect will navigate to 'timer'
+    if (loadTimer(locState.eventId)) return;
 
-    // No saved state — load the schedule from Supabase (or show upload page)
+    // No saved state — load from Supabase or show upload page
     setItems([]);
     getEvent(locState.eventId).then(event => {
       if (event?.schedule && event.schedule.length > 0) {
