@@ -13,7 +13,8 @@ export interface ScheduleItem {
   actualStart?: number;     // Unix ms — when operator marked it started
   actualEnd?: number;       // Unix ms — when operator marked it done
   status: ItemStatus;
-  notes?: string;           // speaker notes shown in teleprompter
+  notes?: string;                         // speaker notes / teleprompter copy
+  customFields?: Record<string, string>;  // user-defined columns (paid plans)
   // what-if override (not persisted to server)
   whatIfDurationMs?: number;
 }
@@ -24,7 +25,7 @@ export interface RawRow {
   [key: string]: string | number | null | undefined;
 }
 
-export type ColumnRole = 'startTime' | 'endTime' | 'duration' | 'title' | 'notes' | 'ignore';
+export type ColumnRole = 'startTime' | 'endTime' | 'duration' | 'title' | 'notes' | 'custom' | 'ignore';
 
 export interface ColumnMapping {
   sourceKey: string;   // original column header or index

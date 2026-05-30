@@ -5,14 +5,15 @@ import { rowsToSchedule, isTimeValue } from '@program-timer/shared';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
-  parseResult:        ParseResult;
-  onConfirm:          (mapping: ColumnMapping[], items: ReturnType<typeof rowsToSchedule>['items']) => void;
-  onBack:             () => void;
+  parseResult:          ParseResult;
+  onConfirm:            (mapping: ColumnMapping[], items: ReturnType<typeof rowsToSchedule>['items']) => void;
+  onBack:               () => void;
+  canUseCustomColumns?: boolean;
   // Row picker (optional — not available for Google Sheets path)
-  headerRowIdx?:      number;
-  totalRows?:         number;
-  rawPreview?:        (string | number | null)[][];
-  onHeaderRowChange?: (idx: number) => void;
+  headerRowIdx?:        number;
+  totalRows?:           number;
+  rawPreview?:          (string | number | null)[][];
+  onHeaderRowChange?:   (idx: number) => void;
 }
 
 const ROLE_LABELS: Record<ColumnRole, string> = {
@@ -21,10 +22,11 @@ const ROLE_LABELS: Record<ColumnRole, string> = {
   duration:  'Duration',
   title:     'Title / Item',
   notes:     'Notes',
+  custom:    'Custom Field',
   ignore:    'Ignore',
 };
 
-const ROLE_OPTIONS: ColumnRole[] = ['startTime', 'endTime', 'duration', 'title', 'notes', 'ignore'];
+const ROLE_OPTIONS: ColumnRole[] = ['startTime', 'endTime', 'duration', 'title', 'notes', 'custom', 'ignore'];
 
 const ROLE_STYLE: Record<ColumnRole, { border: string; bg: string; badge: string; text: string }> = {
   startTime: { border: 'border-t-crimson-500',  bg: 'bg-crimson-950/30',  badge: 'bg-crimson-900/60 text-crimson-300 border-crimson-700/50',  text: 'text-crimson-300'  },
@@ -32,6 +34,7 @@ const ROLE_STYLE: Record<ColumnRole, { border: string; bg: string; badge: string
   duration:  { border: 'border-t-moss-500',     bg: 'bg-moss-950/30',     badge: 'bg-moss-900/60 text-moss-300 border-moss-700/50',           text: 'text-moss-300'     },
   title:     { border: 'border-t-warm-300',     bg: 'bg-warm-800/40',     badge: 'bg-warm-700/60 text-warm-200 border-warm-600/50',           text: 'text-warm-200'     },
   notes:     { border: 'border-t-warm-600',     bg: 'bg-warm-900/30',     badge: 'bg-warm-800/60 text-warm-400 border-warm-700/40',           text: 'text-warm-400'     },
+  custom:    { border: 'border-t-amber-300',    bg: 'bg-amber-950/10',    badge: 'bg-amber-900/30 text-amber-200 border-amber-700/30',        text: 'text-amber-200'    },
   ignore:    { border: 'border-t-warm-800',     bg: 'bg-warm-900/20',     badge: 'bg-warm-900/40 text-warm-600 border-warm-800/40',           text: 'text-warm-600'     },
 };
 
@@ -125,6 +128,7 @@ export function ColumnMapper({
   parseResult,
   onConfirm,
   onBack,
+  canUseCustomColumns = false,
   headerRowIdx,
   totalRows,
   rawPreview,
@@ -132,6 +136,8 @@ export function ColumnMapper({
 }: Props) {
   const [mapping, setMapping]           = useState<ColumnMapping[]>(parseResult.suggestedMapping);
   const [durationUnit, setDurationUnit] = useState<DurationUnit>('auto');
+
+  const hasCustomAssigned = mapping.some(m => m.role === 'custom');
 
   // Reset mapping when the parse result changes (e.g. user changed header row)
   useEffect(() => {
@@ -267,10 +273,20 @@ export function ColumnMapper({
                     )}>
                     {ROLE_OPTIONS.map(r => (
                       <option key={r} value={r} className="text-warm-200 bg-warm-900">
-                        {ROLE_LABELS[r]}
+                        {r === 'custom'
+                          ? `Custom Field${!canUseCustomColumns ? ' (Pro+)' : ''}`
+                          : ROLE_LABELS[r]}
                       </option>
                     ))}
                   </select>
+                  {role === 'custom' && (
+                    <p className="text-[9px] mt-1 leading-tight
+                      text-amber-400/80">
+                      {canUseCustomColumns
+                        ? `Shown as "${sourceKey}"`
+                        : 'Requires Pro or higher to display'}
+                    </p>
+                  )}
                 </div>
 
                 {isDurCol && (
@@ -325,6 +341,18 @@ export function ColumnMapper({
           <p className="text-xs text-crimson-400 flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
             Assign at least one time column (Start Time or a range column)
+          </p>
+        )}
+        {hasCustomAssigned && !canUseCustomColumns && (
+          <p className="text-xs text-amber-400 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            Custom fields require Pro or higher — upgrade to see them in the timer view.
+          </p>
+        )}
+        {hasCustomAssigned && canUseCustomColumns && (
+          <p className="text-xs text-amber-200 flex items-center gap-1.5">
+            <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            Custom fields will appear in the timer panel for each item.
           </p>
         )}
         {canConfirm && (

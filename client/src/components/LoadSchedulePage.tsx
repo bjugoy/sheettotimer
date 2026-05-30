@@ -6,6 +6,8 @@ import { useFileParser } from '../hooks/useFileParser';
 import { useGoogleSheets } from '../hooks/useGoogleSheets';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useSocket } from '../hooks/useSocket';
+import { useAuthStore } from '../store/authStore';
+import { getPlanFeatures } from '../lib/plans';
 import type { ColumnMapping, ScheduleItem } from '@program-timer/shared';
 
 interface Props {
@@ -22,6 +24,9 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLab
     parseFile, parseFromData, reset,
     headerRowIdx, setHeaderRow, totalRows, rawPreview,
   } = useFileParser();
+  const plan                = useAuthStore(s => s.plan);
+  const canUseCustomColumns = getPlanFeatures(plan).canUseCustomColumns;
+
   const { fetchSheet, syncError } = useGoogleSheets();
   const setItems        = useScheduleStore(s => s.setItems);
   const setColumnMapping = useScheduleStore(s => s.setColumnMapping);
@@ -77,6 +82,7 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLab
                 parseResult={parseResult}
                 onConfirm={handleConfirm}
                 onBack={reset}
+                canUseCustomColumns={canUseCustomColumns}
                 headerRowIdx={headerRowIdx}
                 totalRows={totalRows}
                 rawPreview={rawPreview}

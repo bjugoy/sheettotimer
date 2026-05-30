@@ -6,41 +6,46 @@ export interface PlanFeatures {
   canUseEditor: boolean;
   canUsePresenter: boolean;
   canSaveEvents: boolean;
+  canUseCustomColumns: boolean;
   roomCapacity: number;
 }
 
 export const PLANS: Record<Plan, PlanFeatures> = {
   free: {
     label: 'Free',
-    canCreateRoom:   false,
-    canUseEditor:    false,
-    canUsePresenter: false,
-    canSaveEvents:   false,
-    roomCapacity:    0,
+    canCreateRoom:        false,
+    canUseEditor:         false,
+    canUsePresenter:      false,
+    canSaveEvents:        false,
+    canUseCustomColumns:  false,
+    roomCapacity:         0,
   },
   premium1: {
     label: 'Pro',
-    canCreateRoom:   true,
-    canUseEditor:    true,
-    canUsePresenter: true,
-    canSaveEvents:   true,
-    roomCapacity:    5,
+    canCreateRoom:        true,
+    canUseEditor:         true,
+    canUsePresenter:      true,
+    canSaveEvents:        true,
+    canUseCustomColumns:  true,
+    roomCapacity:         5,
   },
   premium2: {
     label: 'Studio',
-    canCreateRoom:   true,
-    canUseEditor:    true,
-    canUsePresenter: true,
-    canSaveEvents:   true,
-    roomCapacity:    15,
+    canCreateRoom:        true,
+    canUseEditor:         true,
+    canUsePresenter:      true,
+    canSaveEvents:        true,
+    canUseCustomColumns:  true,
+    roomCapacity:         15,
   },
   premium3: {
     label: 'Enterprise',
-    canCreateRoom:   true,
-    canUseEditor:    true,
-    canUsePresenter: true,
-    canSaveEvents:   true,
-    roomCapacity:    50,
+    canCreateRoom:        true,
+    canUseEditor:         true,
+    canUsePresenter:      true,
+    canSaveEvents:        true,
+    canUseCustomColumns:  true,
+    roomCapacity:         50,
   },
 };
 

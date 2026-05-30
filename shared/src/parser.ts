@@ -195,8 +195,8 @@ export function detectColumnMapping(headers: string[], rows: RawRow[]): ColumnMa
     const values = sample.map(r => r[header] ?? null);
     let role = scoreColumn(header, values);
 
-    // Avoid assigning the same role twice (except 'ignore')
-    if (role !== 'ignore' && usedRoles.has(role)) {
+    // Avoid assigning the same role twice (except 'ignore' and 'custom')
+    if (role !== 'ignore' && role !== 'custom' && usedRoles.has(role)) {
       // If we already have startTime, next time-like column is endTime
       if (role === 'startTime' && !usedRoles.has('endTime')) {
         role = 'endTime';
@@ -205,7 +205,7 @@ export function detectColumnMapping(headers: string[], rows: RawRow[]): ColumnMa
       }
     }
 
-    if (role !== 'ignore') usedRoles.add(role);
+    if (role !== 'ignore' && role !== 'custom') usedRoles.add(role);
     mapping.push({ sourceKey: header, role });
   }
 
@@ -228,11 +228,12 @@ export function rowsToSchedule(
   const items: ScheduleItem[] = [];
 
   const getCol = (role: ColumnRole) => mapping.find(m => m.role === role)?.sourceKey;
-  const startKey = getCol('startTime');
-  const endKey = getCol('endTime');
-  const durKey = getCol('duration');
-  const titleKey = getCol('title');
-  const notesKey = getCol('notes');
+  const startKey  = getCol('startTime');
+  const endKey    = getCol('endTime');
+  const durKey    = getCol('duration');
+  const titleKey  = getCol('title');
+  const notesKey  = getCol('notes');
+  const customKeys = mapping.filter(m => m.role === 'custom').map(m => m.sourceKey);
 
   let lastEnd: number | undefined;
 
@@ -304,6 +305,12 @@ export function rowsToSchedule(
 
     const notes = notesKey ? String(row[notesKey] ?? '').trim() : undefined;
 
+    const customFields: Record<string, string> = {};
+    for (const key of customKeys) {
+      const val = String(row[key] ?? '').trim();
+      if (val) customFields[key] = val;
+    }
+
     items.push({
       id: newId(),
       title: rawTitle,
@@ -314,6 +321,7 @@ export function rowsToSchedule(
       durationMs,
       status: 'not_started',
       notes: notes || undefined,
+      customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
     });
   }
 

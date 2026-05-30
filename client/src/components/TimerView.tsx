@@ -123,6 +123,27 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
           </p>
         </div>
 
+        {/* Notes — always visible when present */}
+        {current.notes && (
+          <div className="px-5 pb-1">
+            <p className="text-[11px] text-warm-400 leading-relaxed border-l-2 border-warm-700/60 pl-2">
+              {current.notes}
+            </p>
+          </div>
+        )}
+
+        {/* Custom fields — always visible when present */}
+        {current.customFields && Object.keys(current.customFields).length > 0 && (
+          <div className="px-5 pb-1 space-y-0.5">
+            {Object.entries(current.customFields).map(([key, val]) => (
+              <div key={key} className="flex items-baseline gap-1.5">
+                <span className="text-[9px] text-warm-600 uppercase tracking-wide shrink-0">{key}:</span>
+                <span className="text-[11px] text-warm-400 leading-tight">{val}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Big timer ─────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col items-center justify-center px-5 gap-1">
           {isOvertime && timerMode === 'countdown' && eventStarted && (

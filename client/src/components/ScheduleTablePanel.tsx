@@ -8,15 +8,19 @@ export function ScheduleTablePanel({ nowMs }: Props) {
   const items        = useScheduleStore(s => s.items);
   const currentIndex = useScheduleStore(s => s.currentIndex);
 
-  const rows    = items.filter(item => !isNaN(item.scheduledStart));
+  const rows     = items.filter(item => !isNaN(item.scheduledStart));
   const hasNotes = rows.some(item => item.notes?.trim());
+
+  // Collect all unique custom field keys across all items (preserving insertion order)
+  const customKeys = [...new Set(
+    rows.flatMap(item => Object.keys(item.customFields ?? {}))
+  )];
 
   // ── Cell builders ─────────────────────────────────────────────────────────
   const th = (extra = '') =>
     cn('px-3 py-2 text-left text-[10px] uppercase tracking-wider font-normal',
        'border border-warm-600/60 bg-warm-600 text-warm-300 whitespace-nowrap', extra);
 
-  // highlight = current item that isn't done → inverted (light bg, dark text)
   const tdBase = (highlight: boolean, extra = '') =>
     cn('px-3 py-2 text-xs border',
        highlight
@@ -33,7 +37,8 @@ export function ScheduleTablePanel({ nowMs }: Props) {
           <col style={{ width: '7rem' }} />
           <col />
           <col style={{ width: '3.5rem' }} />
-          {hasNotes && <col style={{ width: '26%' }} />}
+          {hasNotes && <col style={{ width: '22%' }} />}
+          {customKeys.map(k => <col key={k} style={{ width: '14%' }} />)}
         </colgroup>
 
         <thead className="sticky top-0 z-10">
@@ -44,6 +49,7 @@ export function ScheduleTablePanel({ nowMs }: Props) {
             <th className={th()}>Item</th>
             <th className={th('text-right')}>Dur</th>
             {hasNotes && <th className={th()}>Notes</th>}
+            {customKeys.map(k => <th key={k} className={th()}>{k}</th>)}
           </tr>
         </thead>
 
@@ -53,9 +59,7 @@ export function ScheduleTablePanel({ nowMs }: Props) {
             const isDone     = item.status === 'done';
             const isActive   = item.status === 'active';
             const isOvertime = isActive && nowMs > item.projectedEnd;
-
-            // Inverted highlight: current item that isn't yet done
-            const hl = isCurrent && !isDone;
+            const hl         = isCurrent && !isDone;
 
             const endDrift    = item.projectedEnd - item.scheduledEnd;
             const showRealEnd = !isDone && Math.abs(endDrift) > 60_000;
@@ -63,7 +67,6 @@ export function ScheduleTablePanel({ nowMs }: Props) {
             return (
               <tr key={item.id} className={cn('transition-colors', isDone && 'opacity-30')}>
 
-                {/* # / live dot */}
                 <td className={cn(
                   tdBase(hl, 'text-right pr-2'),
                   hl ? 'border-l-[3px] border-l-crimson-500' : 'border-l border-l-warm-700/50'
@@ -80,15 +83,10 @@ export function ScheduleTablePanel({ nowMs }: Props) {
                   )}
                 </td>
 
-                {/* Scheduled start */}
-                <td className={cn(
-                  tdBase(hl, 'timer-display'),
-                  hl ? 'text-warm-800' : 'text-warm-300'
-                )}>
+                <td className={cn(tdBase(hl, 'timer-display'), hl ? 'text-warm-800' : 'text-warm-300')}>
                   {formatTime(item.scheduledStart)}
                 </td>
 
-                {/* End time — scheduled from sheet + projected if drifting */}
                 <td className={tdBase(hl, 'timer-display')}>
                   <span className={hl ? 'text-warm-800' : 'text-warm-300'}>
                     {formatTime(item.scheduledEnd)}
@@ -105,7 +103,6 @@ export function ScheduleTablePanel({ nowMs }: Props) {
                   )}
                 </td>
 
-                {/* Title */}
                 <td className={cn(tdBase(hl, 'overflow-hidden'))}>
                   <span className={cn(
                     'block truncate',
@@ -117,25 +114,31 @@ export function ScheduleTablePanel({ nowMs }: Props) {
                   </span>
                 </td>
 
-                {/* Duration */}
-                <td className={cn(
-                  tdBase(hl, 'text-right timer-display'),
-                  hl ? 'text-warm-700' : 'text-warm-400'
-                )}>
+                <td className={cn(tdBase(hl, 'text-right timer-display'), hl ? 'text-warm-700' : 'text-warm-400')}>
                   {formatDuration(item.durationMs)}
                 </td>
 
-                {/* Notes */}
                 {hasNotes && (
                   <td className={tdBase(hl, 'overflow-hidden')}>
                     <span className={cn(
                       'block truncate text-[11px]',
-                      hl ? 'text-warm-700' : 'text-warm-700'
+                      hl ? 'text-warm-700' : 'text-warm-400'
                     )}>
                       {item.notes ?? ''}
                     </span>
                   </td>
                 )}
+
+                {customKeys.map(k => (
+                  <td key={k} className={tdBase(hl, 'overflow-hidden')}>
+                    <span className={cn(
+                      'block truncate text-[11px]',
+                      hl ? 'text-warm-700' : 'text-warm-400'
+                    )}>
+                      {item.customFields?.[k] ?? ''}
+                    </span>
+                  </td>
+                ))}
               </tr>
             );
           })}
