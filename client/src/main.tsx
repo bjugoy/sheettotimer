@@ -6,7 +6,27 @@ import { LandingPage } from './pages/LandingPage';
 import { PaywallPage } from './pages/PaywallPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { useAuthStore } from './store/authStore';
+import { useUpdateCheck } from './hooks/useUpdateCheck';
 import './index.css';
+
+function UpdateBanner() {
+  const updateAvailable = useUpdateCheck();
+  if (!updateAvailable) return null;
+  return (
+    <div className="fixed top-0 inset-x-0 z-[9999] flex items-center justify-between
+      px-4 py-2 bg-crimson-800 border-b border-crimson-700 shadow-lg">
+      <span className="text-xs text-warm-100 font-medium">
+        A new version of SheetToTimer is available.
+      </span>
+      <button
+        onClick={() => window.location.reload()}
+        className="ml-4 shrink-0 text-xs px-3 py-1 bg-warm-100 text-crimson-900
+          font-semibold rounded hover:bg-warm-200 transition-colors">
+        Update now
+      </button>
+    </div>
+  );
+}
 
 function RootRedirect() {
   const user    = useAuthStore(s => s.user);
@@ -37,6 +57,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <UpdateBanner />
         <Routes>
           <Route path="/"          element={<RootRedirect />} />
           <Route path="/landing"   element={<LandingPage />} />

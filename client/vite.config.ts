@@ -1,9 +1,22 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { writeFileSync } from 'fs';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'write-version',
+      apply: 'build',
+      closeBundle() {
+        writeFileSync(
+          path.resolve(__dirname, 'dist/version.json'),
+          JSON.stringify({ buildTime: Date.now() })
+        );
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@program-timer/shared': path.resolve(__dirname, '../shared/src/index.ts'),
