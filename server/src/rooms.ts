@@ -97,6 +97,20 @@ export function getRoomUsers(code: string): RoomUser[] {
   return Array.from(roomUsers.get(code)?.values() ?? []);
 }
 
+export function updateUserRole(
+  code: string,
+  socketId: string,
+  role: RoomUser['role']
+): RoomUser | undefined {
+  const users = roomUsers.get(code);
+  if (!users) return undefined;
+  const user = users.get(socketId);
+  if (!user) return undefined;
+  const updated = { ...user, role };
+  users.set(socketId, updated);
+  return updated;
+}
+
 // Find which room a socket is in
 const socketRooms = new Map<string, string>();
 

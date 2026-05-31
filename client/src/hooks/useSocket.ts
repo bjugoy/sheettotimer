@@ -48,6 +48,10 @@ export function useSocket() {
 
     socket.on('room:users', setUsers);
 
+    socket.on('room:roleChanged', (user) => {
+      setUser(user); // updates isOperator for the affected client
+    });
+
     socket.on('schedule:update', (schedule) => {
       const recalced = recalculate(schedule, Date.now());
       setItems(recalced);
@@ -72,6 +76,7 @@ export function useSocket() {
       socket.off('disconnect');
       socket.off('room:joined');
       socket.off('room:users');
+      socket.off('room:roleChanged');
       socket.off('schedule:update');
       socket.off('item:advance');
       socket.off('item:revert');
@@ -85,8 +90,12 @@ export function useSocket() {
     socketRef.current.emit('room:create', { name, authToken });
   }, []);
 
-  const joinRoom = useCallback((code: string, name: string, role: UserRole) => {
-    socketRef.current.emit('room:join', { code, name, role });
+  const joinRoom = useCallback((code: string, name: string) => {
+    socketRef.current.emit('room:join', { code, name });
+  }, []);
+
+  const setUserRole = useCallback((targetSocketId: string, role: UserRole) => {
+    socketRef.current.emit('room:setRole', { targetSocketId, role });
   }, []);
 
   const sendSchedule = useCallback((schedule: ScheduleItem[]) => {
@@ -109,5 +118,5 @@ export function useSocket() {
     socketRef.current.emit('announcement:send', { text });
   }, []);
 
-  return { createRoom, joinRoom, sendSchedule, updateItem, advanceItem, revertItem, sendAnnouncement };
+  return { createRoom, joinRoom, sendSchedule, updateItem, advanceItem, revertItem, sendAnnouncement, setUserRole };
 }

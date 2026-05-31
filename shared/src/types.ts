@@ -88,12 +88,14 @@ export interface ServerToClientEvents {
   'announcement': (announcement: Announcement) => void;
   'room:users': (users: RoomUser[]) => void;
   'room:joined': (payload: { room: Room; user: RoomUser }) => void;
+  'room:roleChanged': (user: RoomUser) => void;
   'error': (message: string) => void;
 }
 
 export interface ClientToServerEvents {
-  'room:join': (payload: { code: string; name: string; role: UserRole }) => void;
+  'room:join': (payload: { code: string; name: string }) => void;
   'room:create': (payload: { name: string; authToken: string }) => void;
+  'room:setRole': (payload: { targetSocketId: string; role: UserRole }) => void;
   'schedule:set': (schedule: ScheduleItem[]) => void;
   'schedule:updateItem': (payload: { id: string; changes: Partial<ScheduleItem> }) => void;
   'item:start': (payload: { id: string; actualStart: number }) => void;

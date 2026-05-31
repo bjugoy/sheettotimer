@@ -23,6 +23,7 @@ import {
   unregisterSocket,
   getRoomForSocket,
   updateRoom,
+  updateUserRole,
   addAnnouncement,
 } from './rooms';
 import { createOAuthClient, getAuthUrl, fetchSheetData, writeSheetData } from './googleAuth';
@@ -96,15 +97,33 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room:users', getRoomUsers(room.code));
   });
 
-  // ── Room join (open to all — no auth required) ───────────────────────────
-  socket.on('room:join', ({ code, name, role }) => {
-    const result = joinRoom(code, socket.id, name, role);
+  // ── Room join — always viewer; role is assigned by the operator ─────────
+  socket.on('room:join', ({ code, name }) => {
+    const result = joinRoom(code, socket.id, name, 'viewer');
     if ('error' in result) { socket.emit('error', result.error); return; }
 
     const room = getRoom(code)!;
     registerSocket(socket.id, code);
     socket.join(code);
     socket.emit('room:joined', { room, user: result });
+    io.to(code).emit('room:users', getRoomUsers(code));
+  });
+
+  // ── Role change — operator only ──────────────────────────────────────────
+  socket.on('room:setRole', ({ targetSocketId, role }) => {
+    const code = getRoomForSocket(socket.id);
+    if (!code) return;
+    const users    = getRoomUsers(code);
+    const requester = users.find(u => u.id === socket.id);
+    if (requester?.role !== 'operator') {
+      socket.emit('error', 'Only operators can change roles');
+      return;
+    }
+    const updated = updateUserRole(code, targetSocketId, role);
+    if (!updated) return;
+    // Tell the affected user their role changed
+    io.to(targetSocketId).emit('room:roleChanged', updated);
+    // Broadcast updated user list to everyone
     io.to(code).emit('room:users', getRoomUsers(code));
   });
 

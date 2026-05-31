@@ -66,7 +66,7 @@ export default function App() {
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
 
-  const { createRoom, sendSchedule } = useSocket();
+  const { createRoom, sendSchedule, setUserRole } = useSocket();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -341,6 +341,48 @@ export default function App() {
                           </button>
                         </div>
                       </div>
+
+                      {/* Connected users — operator can promote/demote */}
+                      {users.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] text-warm-600 uppercase tracking-wider">
+                            Connected ({users.length})
+                          </p>
+                          <div className="space-y-1">
+                            {users.map(u => {
+                              const isSelf = u.id === useSessionStore.getState().user?.id;
+                              return (
+                                <div key={u.id}
+                                  className="flex items-center gap-2 px-2.5 py-1.5
+                                    bg-warm-800/30 rounded-lg">
+                                  <span className={cn(
+                                    'w-1.5 h-1.5 rounded-full shrink-0',
+                                    u.role === 'operator' ? 'bg-crimson-400' : 'bg-warm-600'
+                                  )} />
+                                  <span className="flex-1 text-xs text-warm-300 truncate">
+                                    {u.name}{isSelf && <span className="text-warm-600 ml-1">(you)</span>}
+                                  </span>
+                                  <span className={cn(
+                                    'text-[9px] uppercase tracking-wide',
+                                    u.role === 'operator' ? 'text-crimson-400' : 'text-warm-600'
+                                  )}>
+                                    {u.role}
+                                  </span>
+                                  {isOperator && !isSelf && (
+                                    <button
+                                      onClick={() => setUserRole(u.id, u.role === 'operator' ? 'viewer' : 'operator')}
+                                      className="text-[9px] text-warm-600 hover:text-warm-300
+                                        border border-warm-700/40 hover:border-warm-600/60
+                                        px-1.5 py-0.5 rounded transition-colors shrink-0">
+                                      {u.role === 'operator' ? '→ Viewer' : '→ Operator'}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       <p className="text-[10px] text-warm-700">
                         Send the link or code to anyone who needs to follow the timer.

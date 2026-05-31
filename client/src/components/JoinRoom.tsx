@@ -4,7 +4,6 @@ import { useSocket } from '../hooks/useSocket';
 import { useAuthStore } from '../store/authStore';
 import { useSessionStore } from '../store/sessionStore';
 import { getPlanFeatures } from '../lib/plans';
-import type { UserRole } from '@program-timer/shared';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
@@ -28,7 +27,6 @@ export function JoinRoom({ onSkip, onSignIn }: Props) {
   const [mode, setMode]   = useState<Mode>('join');
   const [name, setName]   = useState('');
   const [code, setCode]   = useState('');
-  const [role, setRole]   = useState<UserRole>('viewer');
   const [error, setError] = useState('');
 
   const clearErrors = () => { setError(''); setSocketError(null); };
@@ -36,7 +34,7 @@ export function JoinRoom({ onSkip, onSignIn }: Props) {
   useEffect(() => {
     const params   = new URLSearchParams(window.location.search);
     const roomParam = params.get('room');
-    if (roomParam) { setCode(roomParam.toUpperCase()); setMode('join'); setRole('viewer'); }
+    if (roomParam) { setCode(roomParam.toUpperCase()); setMode('join'); }
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -50,7 +48,7 @@ export function JoinRoom({ onSkip, onSignIn }: Props) {
       createRoom(name.trim(), token);
     } else {
       if (code.trim().length !== 6) { setError('Room code must be 6 characters'); return; }
-      joinRoom(code.trim().toUpperCase(), name.trim(), role);
+      joinRoom(code.trim().toUpperCase(), name.trim());
     }
     setError('');
   };
@@ -121,23 +119,6 @@ export function JoinRoom({ onSkip, onSignIn }: Props) {
                   onChange={e => setCode(e.target.value.toUpperCase().slice(0, 6))}
                   placeholder="XXXXXX"
                   className={`${inputCls} font-mono tracking-[0.3em] text-center text-lg`} />
-              </div>
-            )}
-
-            {mode === 'join' && (
-              <div>
-                <label className="text-[11px] text-warm-600 mb-1.5 block">Join as</label>
-                <div className="flex gap-2">
-                  {(['operator', 'viewer'] as UserRole[]).map(r => (
-                    <button key={r} type="button" onClick={() => setRole(r)}
-                      className={cn('flex-1 py-2 rounded-lg text-xs font-medium capitalize border transition-colors',
-                        role === r
-                          ? 'bg-crimson-900/60 border-crimson-700/60 text-crimson-200'
-                          : 'bg-warm-800/50 border-warm-700/40 text-warm-500 hover:text-warm-300')}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 
