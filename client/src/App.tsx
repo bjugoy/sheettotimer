@@ -68,7 +68,7 @@ export default function App() {
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
 
-  const { createRoom, sendSchedule, setUserRole } = useSocket();
+  const { createRoom, setUserRole } = useSocket();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -88,10 +88,6 @@ export default function App() {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
   }, [features.canUseEditor]);
 
-  // When operator creates/joins a session with items already loaded, push the schedule
-  useEffect(() => {
-    if (roomCode && isOperator && items.length > 0) sendSchedule(items);
-  }, [roomCode]);
 
   const handleCreateSession = () => {
     const token = getToken();

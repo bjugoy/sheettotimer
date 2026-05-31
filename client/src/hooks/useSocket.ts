@@ -40,12 +40,14 @@ export function useSocket() {
       setRoom(room.code);
       setUser(user);
       if (room.schedule.length > 0) {
-        // Joining an existing session that already has a schedule
+        // Existing session with a running schedule — server is the source of truth
         setItems(recalculate(room.schedule, Date.now()));
         setCurrentIndex(room.currentIndex);
+      } else if (user.role === 'operator') {
+        // Fresh empty session — push whatever the operator has loaded
+        const loaded = useScheduleStore.getState().items;
+        if (loaded.length > 0) socketRef.current.emit('schedule:set', loaded);
       }
-      // If schedule is empty the operator just created the session —
-      // they'll push their loaded schedule via sendSchedule
     });
 
     socket.on('room:users', setUsers);
