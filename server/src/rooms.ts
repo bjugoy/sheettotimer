@@ -74,7 +74,8 @@ export function joinRoom(
   code: string,
   socketId: string,
   name: string,
-  role: RoomUser['role']
+  role: RoomUser['role'],
+  userId?: string
 ): RoomUser | { error: string } {
   const room = rooms.get(code);
   if (!room) return { error: `Room "${code}" not found` };
@@ -84,9 +85,24 @@ export function joinRoom(
     return { error: `Room is full (capacity: ${room.capacity})` };
   }
 
-  const user: RoomUser = { id: socketId, name, role };
+  const user: RoomUser = { id: socketId, name, role, ...(userId ? { userId } : {}) };
   current.set(socketId, user);
   return user;
+}
+
+/** Returns codes of rooms older than maxAgeMs and removes them. */
+export function cleanupExpiredRooms(maxAgeMs: number): string[] {
+  const cutoff = Date.now() - maxAgeMs;
+  const expired: string[] = [];
+  for (const [code, room] of rooms) {
+    if (room.createdAt < cutoff) {
+      rooms.delete(code);
+      roomUsers.delete(code);
+      announcements.delete(code);
+      expired.push(code);
+    }
+  }
+  return expired;
 }
 
 export function leaveRoom(code: string, socketId: string): void {

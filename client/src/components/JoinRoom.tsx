@@ -48,7 +48,7 @@ export function JoinRoom({ onSkip, onSignIn }: Props) {
       createRoom(name.trim(), token);
     } else {
       if (code.trim().length !== 6) { setError('Room code must be 6 characters'); return; }
-      joinRoom(code.trim().toUpperCase(), name.trim());
+      joinRoom(code.trim().toUpperCase(), name.trim(), getToken() ?? undefined);
     }
     setError('');
   };

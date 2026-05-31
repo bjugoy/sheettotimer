@@ -9,6 +9,7 @@ interface SessionState {
   connected: boolean;
   isOperator: boolean;
   socketError: string | null;
+  sessionEndedReason: string | null;
 
   setRoom: (code: string | null) => void;
   setUser: (user: RoomUser | null) => void;
@@ -17,6 +18,8 @@ interface SessionState {
   dismissAnnouncement: (id: string) => void;
   setConnected: (v: boolean) => void;
   setSocketError: (msg: string | null) => void;
+  setSessionEnded: (reason: string | null) => void;
+  leaveSession: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -27,6 +30,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   connected: false,
   isOperator: false,
   socketError: null,
+  sessionEndedReason: null,
 
   setRoom: (roomCode) => set({ roomCode }),
 
@@ -45,4 +49,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   setConnected: (connected) => set({ connected }),
   setSocketError: (socketError) => set({ socketError }),
+  setSessionEnded: (sessionEndedReason) => set({ sessionEndedReason }),
+  leaveSession: () => set({
+    roomCode: null, user: null, users: [],
+    isOperator: false, sessionEndedReason: null,
+  }),
 }));

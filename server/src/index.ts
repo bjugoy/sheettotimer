@@ -24,6 +24,7 @@ import {
   getRoomForSocket,
   updateRoom,
   updateUserRole,
+  cleanupExpiredRooms,
   addAnnouncement,
 } from './rooms';
 import { createOAuthClient, getAuthUrl, fetchSheetData, writeSheetData } from './googleAuth';
@@ -97,9 +98,14 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room:users', getRoomUsers(room.code));
   });
 
-  // ── Room join — always viewer; role is assigned by the operator ─────────
-  socket.on('room:join', ({ code, name }) => {
-    const result = joinRoom(code, socket.id, name, 'viewer');
+  // ── Room join — always viewer; optional auth identifies registered users ──
+  socket.on('room:join', async ({ code, name, authToken }) => {
+    let userId: string | undefined;
+    if (authToken) {
+      const verified = await verifyToken(authToken);
+      if (verified) userId = verified.userId;
+    }
+    const result = joinRoom(code, socket.id, name, 'viewer', userId);
     if ('error' in result) { socket.emit('error', result.error); return; }
 
     const room = getRoom(code)!;
@@ -109,21 +115,24 @@ io.on('connection', (socket) => {
     io.to(code).emit('room:users', getRoomUsers(code));
   });
 
-  // ── Role change — operator only ──────────────────────────────────────────
+  // ── Role change — operator only; target must be a registered user ─────────
   socket.on('room:setRole', ({ targetSocketId, role }) => {
     const code = getRoomForSocket(socket.id);
     if (!code) return;
-    const users    = getRoomUsers(code);
+    const users     = getRoomUsers(code);
     const requester = users.find(u => u.id === socket.id);
     if (requester?.role !== 'operator') {
       socket.emit('error', 'Only operators can change roles');
       return;
     }
+    const target = users.find(u => u.id === targetSocketId);
+    if (role === 'operator' && !target?.userId) {
+      socket.emit('error', 'Only registered users can be made operators');
+      return;
+    }
     const updated = updateUserRole(code, targetSocketId, role);
     if (!updated) return;
-    // Tell the affected user their role changed
     io.to(targetSocketId).emit('room:roleChanged', updated);
-    // Broadcast updated user list to everyone
     io.to(code).emit('room:users', getRoomUsers(code));
   });
 
@@ -436,6 +445,21 @@ app.post('/webhooks/revenuecat', async (req, res) => {
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// ─── Room expiry — clean up sessions older than 24 h ─────────────────────────
+
+const ROOM_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+setInterval(() => {
+  const expired = cleanupExpiredRooms(ROOM_MAX_AGE_MS);
+  for (const code of expired) {
+    io.to(code).emit('session:ended', 'This session expired after 24 hours.');
+    io.socketsLeave(code);
+  }
+  if (expired.length > 0) {
+    console.log(`[cleanup] Expired ${expired.length} room(s): ${expired.join(', ')}`);
+  }
+}, 60 * 60 * 1000); // check every hour
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

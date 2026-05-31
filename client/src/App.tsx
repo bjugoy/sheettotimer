@@ -37,11 +37,13 @@ export default function App() {
   const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
   const { checkAuthStatus, startOAuth, syncToSheet, syncing } = useGoogleSheets();
 
-  const roomCode    = useSessionStore(s => s.roomCode);
-  const users       = useSessionStore(s => s.users);
-  const connected   = useSessionStore(s => s.connected);
-  const isOperator  = useSessionStore(s => s.isOperator);
-  const socketError = useSessionStore(s => s.socketError);
+  const roomCode          = useSessionStore(s => s.roomCode);
+  const users             = useSessionStore(s => s.users);
+  const connected         = useSessionStore(s => s.connected);
+  const isOperator        = useSessionStore(s => s.isOperator);
+  const socketError       = useSessionStore(s => s.socketError);
+  const sessionEndedReason = useSessionStore(s => s.sessionEndedReason);
+  const leaveSession      = useSessionStore(s => s.leaveSession);
 
   const authUser   = useAuthStore(s => s.user);
   const plan       = useAuthStore(s => s.plan);
@@ -212,6 +214,23 @@ export default function App() {
     </>
   );
 
+  // Session expired overlay — shown to viewers when the room is cleaned up
+  if (sessionEndedReason) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-warm-950 gap-4 p-8 text-center">
+        <Radio className="w-8 h-8 text-warm-700" />
+        <h2 className="text-lg font-semibold text-warm-300">Session ended</h2>
+        <p className="text-sm text-warm-500 max-w-sm">{sessionEndedReason}</p>
+        <button
+          onClick={() => { leaveSession(); navigate('/dashboard', { replace: true }); }}
+          className="mt-2 px-5 py-2.5 bg-crimson-800/60 hover:bg-crimson-700/60
+            border border-crimson-700/50 rounded-lg text-sm text-warm-100 transition-colors">
+          Go to dashboard
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-warm-950">
 
@@ -369,13 +388,19 @@ export default function App() {
                                     {u.role}
                                   </span>
                                   {isOperator && !isSelf && (
-                                    <button
-                                      onClick={() => setUserRole(u.id, u.role === 'operator' ? 'viewer' : 'operator')}
-                                      className="text-[9px] text-warm-600 hover:text-warm-300
-                                        border border-warm-700/40 hover:border-warm-600/60
-                                        px-1.5 py-0.5 rounded transition-colors shrink-0">
-                                      {u.role === 'operator' ? '→ Viewer' : '→ Operator'}
-                                    </button>
+                                    u.role === 'viewer' && !u.userId ? (
+                                      <span className="text-[9px] text-warm-700 shrink-0" title="Guest — must sign in to become operator">
+                                        Guest
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() => setUserRole(u.id, u.role === 'operator' ? 'viewer' : 'operator')}
+                                        className="text-[9px] text-warm-600 hover:text-warm-300
+                                          border border-warm-700/40 hover:border-warm-600/60
+                                          px-1.5 py-0.5 rounded transition-colors shrink-0">
+                                        {u.role === 'operator' ? '→ Viewer' : '→ Operator'}
+                                      </button>
+                                    )
                                   )}
                                 </div>
                               );
@@ -446,6 +471,16 @@ export default function App() {
             <button onClick={() => setView('teleprompter')}
               className="text-[11px] px-2.5 py-1 rounded text-warm-700 hover:text-warm-400 hover:bg-warm-900 transition-colors">
               Presenter
+            </button>
+          )}
+
+          {/* Viewers get a Leave button; operators stay in control */}
+          {roomCode && !isOperator && (
+            <button
+              onClick={() => { leaveSession(); setView('load'); }}
+              className="text-[11px] px-2.5 py-1 rounded text-warm-600
+                hover:text-warm-300 hover:bg-warm-900 transition-colors">
+              Leave
             </button>
           )}
 

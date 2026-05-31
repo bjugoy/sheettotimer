@@ -58,6 +58,7 @@ export interface RoomUser {
   id: string;
   name: string;
   role: UserRole;
+  userId?: string; // Supabase user ID — present only for authenticated users
 }
 
 export interface Room {
@@ -89,11 +90,12 @@ export interface ServerToClientEvents {
   'room:users': (users: RoomUser[]) => void;
   'room:joined': (payload: { room: Room; user: RoomUser }) => void;
   'room:roleChanged': (user: RoomUser) => void;
+  'session:ended': (reason: string) => void;
   'error': (message: string) => void;
 }
 
 export interface ClientToServerEvents {
-  'room:join': (payload: { code: string; name: string }) => void;
+  'room:join': (payload: { code: string; name: string; authToken?: string }) => void;
   'room:create': (payload: { name: string; authToken: string }) => void;
   'room:setRole': (payload: { targetSocketId: string; role: UserRole }) => void;
   'schedule:set': (schedule: ScheduleItem[]) => void;

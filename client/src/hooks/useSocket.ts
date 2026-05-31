@@ -24,9 +24,11 @@ export function useSocket() {
   const setRoom = useSessionStore(s => s.setRoom);
   const setUser = useSessionStore(s => s.setUser);
   const setUsers = useSessionStore(s => s.setUsers);
-  const setConnected = useSessionStore(s => s.setConnected);
+  const setConnected    = useSessionStore(s => s.setConnected);
   const addAnnouncement = useSessionStore(s => s.addAnnouncement);
-  const setSocketError = useSessionStore(s => s.setSocketError);
+  const setSocketError  = useSessionStore(s => s.setSocketError);
+  const setSessionEnded = useSessionStore(s => s.setSessionEnded);
+  const leaveSession    = useSessionStore(s => s.leaveSession);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -67,6 +69,11 @@ export function useSocket() {
 
     socket.on('announcement', addAnnouncement);
 
+    socket.on('session:ended', (reason) => {
+      setSessionEnded(reason);
+      leaveSession();
+    });
+
     socket.on('error', (msg) => setSocketError(msg));
 
     if (!socket.connected) socket.connect();
@@ -77,6 +84,7 @@ export function useSocket() {
       socket.off('room:joined');
       socket.off('room:users');
       socket.off('room:roleChanged');
+      socket.off('session:ended');
       socket.off('schedule:update');
       socket.off('item:advance');
       socket.off('item:revert');
@@ -90,8 +98,8 @@ export function useSocket() {
     socketRef.current.emit('room:create', { name, authToken });
   }, []);
 
-  const joinRoom = useCallback((code: string, name: string) => {
-    socketRef.current.emit('room:join', { code, name });
+  const joinRoom = useCallback((code: string, name: string, authToken?: string) => {
+    socketRef.current.emit('room:join', { code, name, ...(authToken ? { authToken } : {}) });
   }, []);
 
   const setUserRole = useCallback((targetSocketId: string, role: UserRole) => {
