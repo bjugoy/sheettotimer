@@ -413,6 +413,16 @@ export default function App() {
                         Send the link or code to anyone who needs to follow the timer.
                         They join as viewers — you stay in control.
                       </p>
+
+                      {/* Leave button for viewers — reachable on mobile */}
+                      {!isOperator && (
+                        <button
+                          onClick={() => { leaveSession(); setView('load'); setShowShare(false); }}
+                          className="w-full py-2 border border-warm-800/50 rounded-lg text-xs
+                            text-warm-500 hover:text-warm-200 hover:border-warm-700 transition-colors">
+                          Leave session
+                        </button>
+                      )}
                     </>
                   ) : (
                     <div className="space-y-3">
