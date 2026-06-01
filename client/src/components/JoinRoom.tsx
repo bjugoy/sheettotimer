@@ -57,10 +57,15 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
     dismissStored();
   };
 
-  // Authenticated users with a stored session rejoin automatically — no click needed
+  // Authenticated users with a stored session rejoin automatically — no click needed.
+  // Depends on `user` because auth loads async; runs again once the session resolves.
+  const [autoRejoined, setAutoRejoined] = useState(false);
   useEffect(() => {
-    if (stored && user) rejoinStored(stored);
-  }, []);
+    if (stored && user && !autoRejoined) {
+      setAutoRejoined(true);
+      rejoinStored(stored);
+    }
+  }, [user]);
 
   const clearErrors = () => { setError(''); setSocketError(null); };
 
