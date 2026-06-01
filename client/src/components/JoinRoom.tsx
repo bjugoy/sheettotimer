@@ -43,22 +43,24 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
   const features  = getPlanFeatures(plan);
   const canCreate = !!user && features.canCreateRoom;
 
-  const [mode, setMode]       = useState<Mode>('join');
-  const [name, setName]       = useState(prefilledName ?? '');
-  const [code, setCode]       = useState(prefilledCode ?? '');
-  const [error, setError]     = useState('');
-  const [stored, setStored]   = useState<StoredSession | null>(() => getStoredSession());
+  const [mode, setMode]     = useState<Mode>('join');
+  const [name, setName]     = useState(prefilledName ?? '');
+  const [code, setCode]     = useState(prefilledCode ?? '');
+  const [error, setError]   = useState('');
+  const [stored, setStored] = useState<StoredSession | null>(() => getStoredSession());
 
-  const dismissStored = () => {
-    localStorage.removeItem(SESSION_KEY);
-    setStored(null);
-  };
+  const dismissStored = () => { localStorage.removeItem(SESSION_KEY); setStored(null); };
 
-  const rejoinStored = () => {
-    if (!stored) return;
-    joinRoom(stored.code, stored.name, getToken() ?? undefined);
+  const rejoinStored = (s = stored) => {
+    if (!s) return;
+    joinRoom(s.code, s.name, getToken() ?? undefined);
     dismissStored();
   };
+
+  // Authenticated users with a stored session rejoin automatically — no click needed
+  useEffect(() => {
+    if (stored && user) rejoinStored(stored);
+  }, []);
 
   const clearErrors = () => { setError(''); setSocketError(null); };
 
@@ -92,8 +94,8 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
     <div className="min-h-screen bg-warm-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
 
-        {/* Rejoin banner — shown when a previous session is detected */}
-        {stored && (
+        {/* Rejoin banner — only for guests; authenticated users rejoin silently above */}
+        {stored && !user && (
           <div className="mb-4 bg-crimson-950/50 border border-crimson-800/50 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <RotateCcw className="w-4 h-4 text-crimson-400" />
@@ -103,7 +105,7 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
               Room <span className="font-mono text-warm-300 tracking-widest">{stored.code}</span> may still be active
             </p>
             <div className="flex gap-2">
-              <button onClick={rejoinStored}
+              <button onClick={() => rejoinStored()}
                 className="flex-1 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
                   border border-crimson-700/50 rounded-lg text-xs font-semibold
                   text-warm-100 transition-colors">
