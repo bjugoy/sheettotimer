@@ -245,7 +245,10 @@ export default function App() {
             </button>
           ) : (
             <button
-              onClick={() => navigate(authUser ? '/dashboard' : '/landing')}
+              onClick={() => {
+                if (!authUser) setItems([]); // clear so "Try for free" starts fresh
+                navigate(authUser ? '/dashboard' : '/landing');
+              }}
               className="flex items-center gap-1.5 text-warm-500 hover:text-warm-300 transition-colors"
               title={authUser ? 'Go to dashboard' : 'Go home'}
             >
