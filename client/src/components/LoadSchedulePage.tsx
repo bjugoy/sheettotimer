@@ -13,19 +13,20 @@ import type { ColumnMapping, ScheduleItem } from '@program-timer/shared';
 interface Props {
   isGoogleAuthed: boolean;
   onGoogleAuth: () => void;
+  canUseGoogleSheets?: boolean;
   onBack?: () => void;
   backLabel?: string;
   onScheduleLoaded?: (items: ScheduleItem[]) => void;
 }
 
-export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLabel = '← Back', onScheduleLoaded }: Props) {
+export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, canUseGoogleSheets = false, onBack, backLabel = '← Back', onScheduleLoaded }: Props) {
   const {
     parseResult, error: parseError, loading,
     parseFile, parseFromData, reset,
     headerRowIdx, setHeaderRow, totalRows, rawPreview,
   } = useFileParser();
   const plan                = useAuthStore(s => s.plan);
-  const canUseCustomColumns = getPlanFeatures(plan).canUseCustomColumns;
+  const { canUseCustomColumns } = getPlanFeatures(plan);
 
   const { fetchSheet, syncError } = useGoogleSheets();
   const setItems        = useScheduleStore(s => s.setItems);
@@ -96,6 +97,7 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, onBack, backLab
                 onSheetUrl={handleSheetUrl}
                 isGoogleAuthed={isGoogleAuthed}
                 onGoogleAuth={onGoogleAuth}
+                canUseGoogleSheets={canUseGoogleSheets}
                 loading={loading || sheetLoading}
               />
               {(parseError || sheetError) && (

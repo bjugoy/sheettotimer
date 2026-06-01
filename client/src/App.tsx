@@ -225,6 +225,7 @@ export default function App() {
       <LoadSchedulePage
         isGoogleAuthed={googleAuthenticated}
         onGoogleAuth={startOAuth}
+        canUseGoogleSheets={features.canUseGoogleSheets}
         onBack={goBack}
         backLabel={fromDashboard ? '← Dashboard' : '← Home'}
         onScheduleLoaded={locState.eventId
@@ -567,8 +568,8 @@ export default function App() {
         {showEditor ? (
           <ScheduleEditor
             onClose={() => setShowEditor(false)}
-            onSyncToSheets={spreadsheetId ? handleSyncToSheets : undefined}
-            hasSheetsConnection={!!spreadsheetId && googleAuthenticated}
+            onSyncToSheets={spreadsheetId && features.canUseGoogleSheets ? handleSyncToSheets : undefined}
+            hasSheetsConnection={!!spreadsheetId && googleAuthenticated && features.canUseGoogleSheets}
             isSyncing={syncing}
           />
         ) : (

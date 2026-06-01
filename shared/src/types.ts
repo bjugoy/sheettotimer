@@ -42,13 +42,12 @@ export interface ParseResult {
 
 // ─── Plans ───────────────────────────────────────────────────────────────────
 
-export type Plan = 'free' | 'premium1' | 'premium2' | 'premium3';
+export type Plan = 'free' | 'premium1' | 'premium2';
 
 export const PLAN_ROOM_CAPACITY: Record<Plan, number> = {
-  free:      0,
-  premium1:  5,
-  premium2:  15,
-  premium3:  50,
+  free:     0,
+  premium1: 5,
+  premium2: 15,
 };
 
 // ─── Session / room ──────────────────────────────────────────────────────────

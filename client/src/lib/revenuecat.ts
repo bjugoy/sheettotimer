@@ -46,18 +46,15 @@ export async function getPurchasesError() {
 export const PLAN_ENTITLEMENT: Record<Exclude<Plan, 'free'>, string> = {
   premium1: 'pro',
   premium2: 'studio',
-  premium3: 'enterprise',
 };
 
 export const ENTITLEMENT_PLAN: Record<string, Plan> = {
-  pro:        'premium1',
-  studio:     'premium2',
-  enterprise: 'premium3',
+  pro:    'premium1',
+  studio: 'premium2',
 };
 
 export function entitlementsToPlan(activeEntitlementKeys: string[]): Plan {
-  if (activeEntitlementKeys.includes('enterprise')) return 'premium3';
-  if (activeEntitlementKeys.includes('studio'))     return 'premium2';
-  if (activeEntitlementKeys.includes('pro'))        return 'premium1';
+  if (activeEntitlementKeys.includes('studio')) return 'premium2';
+  if (activeEntitlementKeys.includes('pro'))    return 'premium1';
   return 'free';
 }

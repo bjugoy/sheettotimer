@@ -7,10 +7,11 @@ interface Props {
   onSheetUrl: (spreadsheetId: string) => void;
   isGoogleAuthed: boolean;
   onGoogleAuth: () => void;
+  canUseGoogleSheets?: boolean;
   loading?: boolean;
 }
 
-export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, loading }: Props) {
+export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, canUseGoogleSheets = false, loading }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -182,7 +183,12 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
           <Link className="w-3.5 h-3.5" /> Connect a Google Sheet
         </p>
 
-        {isGoogleAuthed ? (
+        {!canUseGoogleSheets ? (
+          <p className="text-xs text-amber-400/80 bg-amber-900/20 border border-amber-800/30
+            px-3 py-2 rounded-lg">
+            Requires Pro or higher — upgrade to connect Google Sheets directly.
+          </p>
+        ) : isGoogleAuthed ? (
           <div className="flex gap-2">
             <input
               type="url"

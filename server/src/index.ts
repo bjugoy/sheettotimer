@@ -402,9 +402,8 @@ const ACTIVATE_EVENTS: RCEventType[] = ['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_
 const EXPIRE_EVENTS:   RCEventType[] = ['EXPIRATION', 'BILLING_ISSUE'];
 
 function entitlementsToPlan(ids: string[]): import('@program-timer/shared').Plan {
-  if (ids.includes('enterprise')) return 'premium3';
-  if (ids.includes('studio'))     return 'premium2';
-  if (ids.includes('pro'))        return 'premium1';
+  if (ids.includes('studio')) return 'premium2';
+  if (ids.includes('pro'))    return 'premium1';
   return 'free';
 }
 
