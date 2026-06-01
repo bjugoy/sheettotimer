@@ -5,6 +5,8 @@ import { v4 as uuid } from 'uuid';
 const rooms = new Map<string, Room>();
 const roomUsers = new Map<string, Map<string, RoomUser>>();
 const announcements = new Map<string, Announcement[]>();
+// Tracks which authenticated userIds have been granted operator in each room
+const roomOperators = new Map<string, Set<string>>();
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -31,6 +33,7 @@ export function createRoom(ownerId: string, capacity: number): Room {
   rooms.set(code, room);
   roomUsers.set(code, new Map());
   announcements.set(code, []);
+  roomOperators.set(code, new Set([ownerId]));
   return room;
 }
 
@@ -85,9 +88,15 @@ export function joinRoom(
     return { error: `Room is full (capacity: ${room.capacity})` };
   }
 
-  const user: RoomUser = { id: socketId, name, role, ...(userId ? { userId } : {}) };
+  // Restore operator role if this user was previously granted it
+  const resolvedRole = (userId && roomOperators.get(code)?.has(userId)) ? 'operator' : role;
+  const user: RoomUser = { id: socketId, name, role: resolvedRole, ...(userId ? { userId } : {}) };
   current.set(socketId, user);
   return user;
+}
+
+export function isOperatorUser(code: string, userId: string): boolean {
+  return roomOperators.get(code)?.has(userId) ?? false;
 }
 
 /** Returns codes of rooms older than maxAgeMs and removes them. */
@@ -99,6 +108,7 @@ export function cleanupExpiredRooms(maxAgeMs: number): string[] {
       rooms.delete(code);
       roomUsers.delete(code);
       announcements.delete(code);
+      roomOperators.delete(code);
       expired.push(code);
     }
   }
@@ -124,6 +134,14 @@ export function updateUserRole(
   if (!user) return undefined;
   const updated = { ...user, role };
   users.set(socketId, updated);
+  // Persist operator grants/revocations so they survive reconnects
+  if (user.userId) {
+    const ops = roomOperators.get(code);
+    if (ops) {
+      if (role === 'operator') ops.add(user.userId);
+      else ops.delete(user.userId);
+    }
+  }
   return updated;
 }
 
