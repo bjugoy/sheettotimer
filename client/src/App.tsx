@@ -244,10 +244,14 @@ export default function App() {
               <span className="text-xs font-medium">Dashboard</span>
             </button>
           ) : (
-            <div className="flex items-center gap-1.5 text-warm-500">
+            <button
+              onClick={() => navigate(authUser ? '/dashboard' : '/landing')}
+              className="flex items-center gap-1.5 text-warm-500 hover:text-warm-300 transition-colors"
+              title={authUser ? 'Go to dashboard' : 'Go home'}
+            >
               <Radio className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold text-warm-400 tracking-wide">SheetToTimer</span>
-            </div>
+              <span className="text-xs font-semibold tracking-wide">SheetToTimer</span>
+            </button>
           )}
 
           {/* Event name — only when opened from dashboard */}
