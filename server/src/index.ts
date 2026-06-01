@@ -105,13 +105,18 @@ io.on('connection', (socket) => {
       const verified = await verifyToken(authToken);
       if (verified) userId = verified.userId;
     }
-    const result = joinRoom(code, socket.id, name, 'viewer', userId);
+    const existingRoom = getRoom(code);
+    if (!existingRoom) { socket.emit('error', `Room "${code}" not found`); return; }
+
+    // Room owner rejoining gets their operator role back automatically
+    const role = (userId && userId === existingRoom.ownerId) ? 'operator' : 'viewer';
+
+    const result = joinRoom(code, socket.id, name, role, userId);
     if ('error' in result) { socket.emit('error', result.error); return; }
 
-    const room = getRoom(code)!;
     registerSocket(socket.id, code);
     socket.join(code);
-    socket.emit('room:joined', { room, user: result });
+    socket.emit('room:joined', { room: existingRoom, user: result });
     io.to(code).emit('room:users', getRoomUsers(code));
   });
 

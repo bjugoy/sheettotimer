@@ -1,5 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Radio, UserCircle, Lock } from 'lucide-react';
+import { Radio, UserCircle, Lock, RotateCcw } from 'lucide-react';
+
+const SESSION_KEY = 'stt-session';
+
+interface StoredSession { code: string; name: string; createdAt: number; }
+
+function getStoredSession(): StoredSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as StoredSession;
+    if (Date.now() - s.createdAt > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return s;
+  } catch { return null; }
+}
 import { useSocket } from '../hooks/useSocket';
 import { useAuthStore } from '../store/authStore';
 import { useSessionStore } from '../store/sessionStore';
@@ -26,10 +43,22 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
   const features  = getPlanFeatures(plan);
   const canCreate = !!user && features.canCreateRoom;
 
-  const [mode, setMode]   = useState<Mode>('join');
-  const [name, setName]   = useState(prefilledName ?? '');
-  const [code, setCode]   = useState(prefilledCode ?? '');
-  const [error, setError] = useState('');
+  const [mode, setMode]       = useState<Mode>('join');
+  const [name, setName]       = useState(prefilledName ?? '');
+  const [code, setCode]       = useState(prefilledCode ?? '');
+  const [error, setError]     = useState('');
+  const [stored, setStored]   = useState<StoredSession | null>(() => getStoredSession());
+
+  const dismissStored = () => {
+    localStorage.removeItem(SESSION_KEY);
+    setStored(null);
+  };
+
+  const rejoinStored = () => {
+    if (!stored) return;
+    joinRoom(stored.code, stored.name, getToken() ?? undefined);
+    dismissStored();
+  };
 
   const clearErrors = () => { setError(''); setSocketError(null); };
 
@@ -62,6 +91,31 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
   return (
     <div className="min-h-screen bg-warm-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
+
+        {/* Rejoin banner — shown when a previous session is detected */}
+        {stored && (
+          <div className="mb-4 bg-crimson-950/50 border border-crimson-800/50 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <RotateCcw className="w-4 h-4 text-crimson-400" />
+              <p className="text-sm font-semibold text-warm-200">Continue your session</p>
+            </div>
+            <p className="text-xs text-warm-500 mb-3">
+              Room <span className="font-mono text-warm-300 tracking-widest">{stored.code}</span> may still be active
+            </p>
+            <div className="flex gap-2">
+              <button onClick={rejoinStored}
+                className="flex-1 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
+                  border border-crimson-700/50 rounded-lg text-xs font-semibold
+                  text-warm-100 transition-colors">
+                Rejoin as {stored.name}
+              </button>
+              <button onClick={dismissStored}
+                className="px-3 py-2 text-xs text-warm-700 hover:text-warm-400 transition-colors">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="text-center mb-7">
           <Radio className="w-7 h-7 text-crimson-400 mx-auto mb-2" />

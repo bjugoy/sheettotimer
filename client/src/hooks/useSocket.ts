@@ -40,14 +40,20 @@ export function useSocket() {
       setRoom(room.code);
       setUser(user);
       if (room.schedule.length > 0) {
-        // Existing session with a running schedule — server is the source of truth
         setItems(recalculate(room.schedule, Date.now()));
         setCurrentIndex(room.currentIndex);
       } else if (user.role === 'operator') {
-        // Fresh empty session — push whatever the operator has loaded
         const loaded = useScheduleStore.getState().items;
         if (loaded.length > 0) socketRef.current.emit('schedule:set', loaded);
       }
+      // Persist session so the operator can rejoin after a page refresh
+      try {
+        localStorage.setItem('stt-session', JSON.stringify({
+          code:      room.code,
+          name:      user.name,
+          createdAt: room.createdAt,
+        }));
+      } catch {}
     });
 
     socket.on('room:users', setUsers);
@@ -74,6 +80,7 @@ export function useSocket() {
     socket.on('session:ended', (reason) => {
       setSessionEnded(reason);
       leaveSession();
+      try { localStorage.removeItem('stt-session'); } catch {}
     });
 
     socket.on('error', (msg) => setSocketError(msg));
