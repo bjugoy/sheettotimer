@@ -52,6 +52,7 @@ interface ScheduleState {
   clearAll: () => void;
   pause: () => void;
   resume: () => void;
+  syncItems: (items: ScheduleItem[]) => void;
   setActiveEventId: (id: string | null) => void;
   saveTimer: (eventId: string) => void;
   loadTimer: (eventId: string) => boolean;
@@ -170,9 +171,14 @@ export const useScheduleStore = create<ScheduleState>()(
       },
 
       pause: () => {
-        if (get().isPaused) return;
-        if (!get().items.some(i => i.status === 'active')) return;
-        set({ isPaused: true, pausedAt: Date.now() });
+        const { isPaused, items, currentIndex } = get();
+        if (isPaused) return;
+        if (!items.some(i => i.status === 'active')) return;
+        const now = Date.now();
+        const stamped = items.map((item, i) =>
+          i === currentIndex && item.status === 'active' ? { ...item, pausedAt: now } : item
+        );
+        set({ isPaused: true, pausedAt: now, items: stamped });
       },
 
       resume: () => {
@@ -185,6 +191,7 @@ export const useScheduleStore = create<ScheduleState>()(
           if (i === currentIndex && item.status === 'active') {
             return {
               ...item,
+              pausedAt: undefined,
               scheduledEnd: item.scheduledEnd + pauseDuration,
               projectedEnd: item.projectedEnd + pauseDuration,
             };
@@ -201,6 +208,16 @@ export const useScheduleStore = create<ScheduleState>()(
           return item;
         });
         set({ isPaused: false, pausedAt: undefined, items: recalculate(shifted, now) });
+      },
+
+      // Applies a schedule received from the server without resetting currentIndex.
+      // Derives isPaused/pausedAt from the active item's pausedAt field so pause
+      // state round-trips through the socket correctly.
+      syncItems: (items) => {
+        const active = items.find(i => i.status === 'active');
+        const isPaused = !!active?.pausedAt;
+        const pausedAt = active?.pausedAt;
+        set({ items, isPaused, pausedAt });
       },
 
       setActiveEventId: (activeEventId) => set({ activeEventId }),

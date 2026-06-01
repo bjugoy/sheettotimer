@@ -20,6 +20,7 @@ function getSocket(): AppSocket {
 export function useSocket() {
   const socketRef = useRef<AppSocket>(getSocket());
   const setItems = useScheduleStore(s => s.setItems);
+  const syncItems = useScheduleStore(s => s.syncItems);
   const setCurrentIndex = useScheduleStore(s => s.setCurrentIndex);
   const setRoom = useSessionStore(s => s.setRoom);
   const setUser = useSessionStore(s => s.setUser);
@@ -64,7 +65,7 @@ export function useSocket() {
 
     socket.on('schedule:update', (schedule) => {
       const recalced = recalculate(schedule, Date.now());
-      setItems(recalced);
+      syncItems(recalced);
     });
 
     socket.on('item:advance', ({ currentIndex }) => {

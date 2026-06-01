@@ -12,6 +12,7 @@ export interface ScheduleItem {
   durationMs: number;       // original planned duration in ms
   actualStart?: number;     // Unix ms — when operator marked it started
   actualEnd?: number;       // Unix ms — when operator marked it done
+  pausedAt?: number;        // Unix ms — set while timer is paused, cleared on resume
   status: ItemStatus;
   notes?: string;                         // speaker notes / teleprompter copy
   customFields?: Record<string, string>;  // user-defined columns (paid plans)

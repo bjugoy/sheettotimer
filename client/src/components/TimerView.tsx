@@ -64,7 +64,10 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
     if (!roomCode) { revertToPrev(); } else { revertItem(); }
   };
 
-  const handlePause = () => pause();
+  const handlePause = () => {
+    pause();
+    if (roomCode) sendSchedule(useScheduleStore.getState().items);
+  };
 
   const handleResume = () => {
     resume(); // zustand set() is synchronous — store is updated immediately

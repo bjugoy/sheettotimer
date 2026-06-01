@@ -46,6 +46,8 @@ export function DashboardPage() {
   const [addingEvent, setAddingEvent] = useState(false);
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
+  const [pendingDeleteProd,  setPendingDeleteProd]  = useState<string | null>(null);
+  const [pendingDeleteEvent, setPendingDeleteEvent] = useState<string | null>(null);
 
   useEffect(() => { if (!user) navigate('/landing', { replace: true }); }, [user]);
 
@@ -85,7 +87,12 @@ export function DashboardPage() {
     finally { setSaving(false); }
   };
 
-  const handleDeleteProd = async (id: string) => {
+  const handleDeleteProd = (id: string) => setPendingDeleteProd(id);
+
+  const confirmDeleteProd = async () => {
+    if (!pendingDeleteProd) return;
+    const id = pendingDeleteProd;
+    setPendingDeleteProd(null);
     try {
       await deleteProduction(id);
       setProds(prev => prev.filter(p => p.id !== id));
@@ -105,7 +112,12 @@ export function DashboardPage() {
     finally { setSaving(false); }
   };
 
-  const handleDeleteEvent = async (id: string) => {
+  const handleDeleteEvent = (id: string) => setPendingDeleteEvent(id);
+
+  const confirmDeleteEvent = async () => {
+    if (!pendingDeleteEvent) return;
+    const id = pendingDeleteEvent;
+    setPendingDeleteEvent(null);
     try {
       await deleteEvent(id);
       setEvents(prev => prev.filter(e => e.id !== id));
@@ -413,6 +425,66 @@ export function DashboardPage() {
       </div>
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+
+      {/* ── Delete production confirmation ──────────────────────────────────── */}
+      {pendingDeleteProd && (() => {
+        const prod = prods.find(p => p.id === pendingDeleteProd);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-700/60 rounded-2xl p-6 shadow-2xl">
+              <h3 className="text-sm font-semibold text-warm-100 mb-1">Delete production?</h3>
+              <p className="text-xs text-warm-500 mb-4">
+                <span className="text-warm-300">"{prod?.name}"</span> and all its events will be permanently deleted.
+                This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={confirmDeleteProd}
+                  className="flex-1 py-2 text-xs bg-crimson-800/70 hover:bg-crimson-700/70
+                    border border-crimson-700/50 text-crimson-200 rounded-lg transition-colors">
+                  Yes, delete
+                </button>
+                <button
+                  onClick={() => setPendingDeleteProd(null)}
+                  className="flex-1 py-2 text-xs bg-warm-800/60 hover:bg-warm-700/60
+                    border border-warm-700/50 text-warm-300 rounded-lg transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Delete event confirmation ────────────────────────────────────────── */}
+      {pendingDeleteEvent && (() => {
+        const evt = events.find(e => e.id === pendingDeleteEvent);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-700/60 rounded-2xl p-6 shadow-2xl">
+              <h3 className="text-sm font-semibold text-warm-100 mb-1">Delete event?</h3>
+              <p className="text-xs text-warm-500 mb-4">
+                <span className="text-warm-300">"{evt?.name}"</span> and its schedule will be permanently deleted.
+                This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={confirmDeleteEvent}
+                  className="flex-1 py-2 text-xs bg-crimson-800/70 hover:bg-crimson-700/70
+                    border border-crimson-700/50 text-crimson-200 rounded-lg transition-colors">
+                  Yes, delete
+                </button>
+                <button
+                  onClick={() => setPendingDeleteEvent(null)}
+                  className="flex-1 py-2 text-xs bg-warm-800/60 hover:bg-warm-700/60
+                    border border-warm-700/50 text-warm-300 rounded-lg transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
