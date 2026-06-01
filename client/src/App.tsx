@@ -71,7 +71,7 @@ export default function App() {
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
 
-  const { createRoom, setUserRole } = useSocket();
+  const { createRoom, joinRoom, setUserRole } = useSocket();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -90,6 +90,24 @@ export default function App() {
   useEffect(() => {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
   }, [features.canUseEditor]);
+
+  // Auto-rejoin stored session as soon as the user's auth session resolves.
+  // Fires once when authUser changes from null → user object.
+  // This keeps participants in the same room when the creator refreshes.
+  useEffect(() => {
+    if (!authUser || roomCode) return; // skip if not authenticated or already in a room
+    try {
+      const raw = localStorage.getItem('stt-session');
+      if (!raw) return;
+      const stored = JSON.parse(raw) as { code: string; name: string; createdAt: number };
+      if (Date.now() - stored.createdAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem('stt-session');
+        return;
+      }
+      const token = getToken();
+      joinRoom(stored.code, stored.name, token ?? undefined);
+    } catch {}
+  }, [authUser]);
 
 
   const handleCreateSession = () => {

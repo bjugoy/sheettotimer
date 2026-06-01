@@ -47,25 +47,16 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
   const [name, setName]     = useState(prefilledName ?? '');
   const [code, setCode]     = useState(prefilledCode ?? '');
   const [error, setError]   = useState('');
-  const [stored, setStored] = useState<StoredSession | null>(() => getStoredSession());
+  // Stored session — shown as a manual rejoin banner for guests only.
+  // Authenticated users are auto-rejoined from App.tsx before reaching this screen.
+  const [stored, setStored] = useState<StoredSession | null>(() => !user ? getStoredSession() : null);
 
   const dismissStored = () => { localStorage.removeItem(SESSION_KEY); setStored(null); };
-
-  const rejoinStored = (s = stored) => {
-    if (!s) return;
-    joinRoom(s.code, s.name, getToken() ?? undefined);
+  const rejoinStored  = () => {
+    if (!stored) return;
+    joinRoom(stored.code, stored.name, getToken() ?? undefined);
     dismissStored();
   };
-
-  // Authenticated users with a stored session rejoin automatically — no click needed.
-  // Depends on `user` because auth loads async; runs again once the session resolves.
-  const [autoRejoined, setAutoRejoined] = useState(false);
-  useEffect(() => {
-    if (stored && user && !autoRejoined) {
-      setAutoRejoined(true);
-      rejoinStored(stored);
-    }
-  }, [user]);
 
   const clearErrors = () => { setError(''); setSocketError(null); };
 
