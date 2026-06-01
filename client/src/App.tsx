@@ -23,6 +23,8 @@ interface LocationState {
   from?: string;
   eventId?: string;
   eventName?: string;
+  joinCode?: string;
+  joinName?: string;
 }
 
 export default function App() {
@@ -52,7 +54,8 @@ export default function App() {
 
   // If coming from dashboard or landing "try for free", skip the join screen
   const fromDashboard = locState.from === 'dashboard';
-  const initialView: AppView = (fromDashboard || items.length > 0) ? 'load' : 'join';
+  const wantsJoin     = !!locState.joinCode;
+  const initialView: AppView = wantsJoin ? 'join' : (fromDashboard || items.length > 0) ? 'load' : 'join';
 
   const [view, setView]             = useState<AppView>(initialView);
   // True while we're resolving which event to load — prevents stale persisted
@@ -188,7 +191,12 @@ export default function App() {
 
   if (view === 'join') return (
     <>
-      <JoinRoom onSkip={() => setView('load')} onSignIn={() => setShowAuth(true)} />
+      <JoinRoom
+        onSkip={() => setView('load')}
+        onSignIn={() => setShowAuth(true)}
+        prefilledCode={locState.joinCode}
+        prefilledName={locState.joinName}
+      />
       {showAuth   && <AuthModal    onClose={() => setShowAuth(false)} />}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </>

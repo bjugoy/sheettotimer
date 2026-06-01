@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Radio, Plus, Folder, CalendarDays,
   ChevronRight, Trash2, Play, Loader2, UserCircle,
+  ArrowLeft, LogIn,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -27,6 +28,11 @@ export function DashboardPage() {
   const isLive      = storeItems.some(i => i.status === 'active');
 
   const [showProfile, setShowProfile] = useState(false);
+  const [showJoin,    setShowJoin]    = useState(false);
+  const [joinCode,    setJoinCode]    = useState('');
+  const [joinName,    setJoinName]    = useState(
+    () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
+  );
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [prods, setProds]           = useState<Production[]>([]);
@@ -116,29 +122,96 @@ export function DashboardPage() {
     <div className="h-screen flex flex-col bg-warm-950">
 
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
-      <header className="shrink-0 flex items-center justify-between px-6 h-12
-        border-b border-warm-800/40 bg-warm-900/60">
-        <div className="flex items-center gap-2">
-          <Radio className="w-4 h-4 text-crimson-400" />
-          <span className="text-sm font-bold text-warm-200">SheetToTimer</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {!features.canSaveEvents && (
-            <span className="text-[10px] text-amber-500/80 bg-amber-900/20 border border-amber-800/30
-              px-2 py-0.5 rounded">
-              Upgrade to save events
+      <header className="shrink-0 border-b border-warm-800/40 bg-warm-900/60">
+        <div className="flex items-center justify-between px-6 h-12">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
+            <span className="text-warm-800">·</span>
+            <div className="flex items-center gap-1.5">
+              <Radio className="w-3.5 h-3.5 text-crimson-400" />
+              <span className="text-sm font-bold text-warm-200">SheetToTimer</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!features.canSaveEvents && (
+              <span className="text-[10px] text-amber-500/80 bg-amber-900/20 border border-amber-800/30
+                px-2 py-0.5 rounded">
+                Upgrade to save events
+              </span>
+            )}
+            <button
+              onClick={() => setShowJoin(s => !s)}
+              className={cn(
+                'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium',
+                showJoin
+                  ? 'bg-warm-700 text-warm-100 border-warm-600'
+                  : 'text-warm-300 border-warm-700/60 hover:bg-warm-800 hover:text-warm-100'
+              )}>
+              <LogIn className="w-3.5 h-3.5" />
+              Join Room
+            </button>
+            <span className={cn('text-xs px-2.5 py-1.5 rounded-lg border', badgeCls)}>
+              {getPlanFeatures(plan).label}
             </span>
-          )}
-          <span className={cn('text-[10px] px-2 py-0.5 rounded border', badgeCls)}>
-            {getPlanFeatures(plan).label}
-          </span>
-          <button
-            onClick={() => setShowProfile(true)}
-            className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors max-w-[160px]">
-            <UserCircle className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{user?.user_metadata?.full_name || user?.email}</span>
-          </button>
+            <button onClick={() => setShowProfile(true)}
+              className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors max-w-[140px]">
+              <UserCircle className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{user?.user_metadata?.full_name || user?.email}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Join Room inline panel */}
+        {showJoin && (
+          <div className="px-6 py-3 bg-warm-900/80 border-t border-warm-800/40 flex items-end gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] text-warm-600 uppercase tracking-wider">Room code</label>
+              <input
+                autoFocus
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && joinCode.length === 6 && joinName.trim()) {
+                    navigate('/app', { state: { joinCode: joinCode.trim(), joinName: joinName.trim() } });
+                  }
+                  if (e.key === 'Escape') setShowJoin(false);
+                }}
+                placeholder="XXXXXX"
+                className="w-32 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5
+                  text-sm text-warm-100 font-mono tracking-[0.2em] text-center placeholder-warm-700
+                  focus:outline-none focus:border-crimson-700/60 transition-colors"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] text-warm-600 uppercase tracking-wider">Your name</label>
+              <input
+                value={joinName}
+                onChange={e => setJoinName(e.target.value)}
+                placeholder="Name"
+                className="w-40 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5
+                  text-sm text-warm-200 placeholder-warm-700
+                  focus:outline-none focus:border-crimson-700/60 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => navigate('/app', { state: { joinCode: joinCode.trim(), joinName: joinName.trim() } })}
+              disabled={joinCode.length !== 6 || !joinName.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-crimson-800/60 hover:bg-crimson-700/60
+                disabled:opacity-40 disabled:cursor-not-allowed border border-crimson-700/50
+                rounded-lg text-sm font-medium text-warm-100 transition-colors">
+              <LogIn className="w-3.5 h-3.5" /> Join
+            </button>
+            <button onClick={() => setShowJoin(false)}
+              className="text-xs text-warm-700 hover:text-warm-400 transition-colors pb-1.5">
+              Cancel
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Error banner */}

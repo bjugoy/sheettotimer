@@ -7,13 +7,15 @@ import { getPlanFeatures } from '../lib/plans';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
-  onSkip:    () => void;
-  onSignIn:  () => void;
+  onSkip:          () => void;
+  onSignIn:        () => void;
+  prefilledCode?:  string;
+  prefilledName?:  string;
 }
 
 type Mode = 'create' | 'join';
 
-export function JoinRoom({ onSkip, onSignIn }: Props) {
+export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Props) {
   const { createRoom, joinRoom } = useSocket();
   const user         = useAuthStore(s => s.user);
   const plan         = useAuthStore(s => s.plan);
@@ -25,8 +27,8 @@ export function JoinRoom({ onSkip, onSignIn }: Props) {
   const canCreate = !!user && features.canCreateRoom;
 
   const [mode, setMode]   = useState<Mode>('join');
-  const [name, setName]   = useState('');
-  const [code, setCode]   = useState('');
+  const [name, setName]   = useState(prefilledName ?? '');
+  const [code, setCode]   = useState(prefilledCode ?? '');
   const [error, setError] = useState('');
 
   const clearErrors = () => { setError(''); setSocketError(null); };
