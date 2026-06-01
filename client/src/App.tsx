@@ -231,7 +231,7 @@ export default function App() {
     <div className="h-screen flex flex-col overflow-hidden bg-warm-950">
 
       {/* ── Top bar ───────────────────────────────────────────────────────── */}
-      <header className="shrink-0 flex items-center justify-between px-4 h-9
+      <header className="shrink-0 flex items-center justify-between px-4 h-11
         border-b border-warm-800/50 bg-warm-900/60">
 
         <div className="flex items-center gap-3">
@@ -280,12 +280,15 @@ export default function App() {
             </div>
           )}
 
-          {/* Connected viewers */}
+          {/* Connected viewers — click to open Share/People panel */}
           {users.length > 0 && (
-            <div className="flex items-center gap-1 text-warm-500" title={`${users.length} connected`}>
-              <Users className="w-3 h-3" />
-              <span className="text-[10px]">{users.length}</span>
-            </div>
+            <button onClick={() => setShowShare(s => !s)}
+              className="flex items-center gap-1 text-warm-500 hover:text-warm-300
+                px-1.5 py-1 rounded hover:bg-warm-800/50 transition-colors"
+              title="Connected people">
+              <Users className="w-3.5 h-3.5" />
+              <span className="text-xs">{users.length}</span>
+            </button>
           )}
         </div>
 
@@ -297,10 +300,10 @@ export default function App() {
             <button
               onClick={() => setShowShare(s => !s)}
               className={cn(
-                'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded transition-colors border',
+                'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium',
                 showShare
-                  ? 'bg-warm-800 text-warm-200 border-warm-700/60'
-                  : 'text-warm-500 hover:text-warm-200 hover:bg-warm-900 border-transparent'
+                  ? 'bg-warm-700 text-warm-100 border-warm-600'
+                  : 'text-warm-300 border-warm-700/60 hover:bg-warm-800 hover:text-warm-100'
               )}>
               <Share2 className="w-3 h-3" />
               Share
@@ -474,53 +477,61 @@ export default function App() {
 
           {features.canUseEditor && (
             <button onClick={() => setShowEditor(s => !s)}
-              className={cn('ml-2 text-[11px] px-2.5 py-1 rounded transition-colors',
-                showEditor ? 'bg-warm-800 text-warm-200' : 'text-warm-600 hover:text-warm-300 hover:bg-warm-900')}>
+              className={cn('text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium',
+                showEditor
+                  ? 'bg-warm-700 text-warm-100 border-warm-600'
+                  : 'text-warm-300 border-warm-700/60 hover:bg-warm-800 hover:text-warm-100')}>
               {showEditor ? '← Timer' : 'Editor'}
             </button>
           )}
 
           {features.canUsePresenter && !showEditor && (
             <button onClick={() => setView('teleprompter')}
-              className="text-[11px] px-2.5 py-1 rounded text-warm-700 hover:text-warm-400 hover:bg-warm-900 transition-colors">
+              className="text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
+                text-warm-300 hover:bg-warm-800 hover:text-warm-100 transition-colors font-medium">
               Presenter
             </button>
           )}
 
-          {/* Viewers get a Leave button; operators stay in control */}
           {roomCode && !isOperator && (
-            <button
-              onClick={() => { leaveSession(); setView('load'); }}
-              className="text-[11px] px-2.5 py-1 rounded text-warm-600
-                hover:text-warm-300 hover:bg-warm-900 transition-colors">
+            <button onClick={() => { leaveSession(); setView('load'); }}
+              className="text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
+                text-warm-400 hover:bg-warm-800 hover:text-warm-200 transition-colors">
               Leave
             </button>
           )}
 
           <button onClick={() => setView('load')}
-            className="text-[11px] px-2.5 py-1 rounded text-warm-700 hover:text-warm-400 hover:bg-warm-900 transition-colors">
+            className="text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
+              text-warm-400 hover:bg-warm-800 hover:text-warm-200 transition-colors">
             Load
           </button>
 
           {authUser ? (
-            <div className="flex items-center gap-1.5 ml-1">
-              <span className={cn('text-[10px] px-1.5 py-0.5 rounded border', PLAN_BADGE_COLOR[plan])}>
+            <div className="flex items-center gap-2 ml-1">
+              {/* Plan badge — opens paywall */}
+              <button onClick={() => navigate('/paywall')}
+                className={cn(
+                  'text-xs px-3 py-1.5 rounded-lg border font-semibold transition-colors',
+                  PLAN_BADGE_COLOR[plan],
+                  'hover:brightness-125'
+                )}>
                 {getPlanFeatures(plan).label}
-              </span>
-              <button onClick={() => navigate('/dashboard')}
-                className="text-[11px] text-warm-600 hover:text-warm-300 transition-colors max-w-[80px] truncate">
-                {authUser.user_metadata?.full_name || authUser.email?.split('@')[0]}
               </button>
               <button onClick={() => setShowProfile(true)} title="Account"
-                className="text-warm-700 hover:text-warm-400 transition-colors">
-                <UserCircle className="w-3.5 h-3.5" />
+                className="flex items-center gap-1.5 text-xs text-warm-400
+                  hover:text-warm-200 transition-colors max-w-[100px]">
+                <UserCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">
+                  {authUser.user_metadata?.full_name || authUser.email?.split('@')[0]}
+                </span>
               </button>
             </div>
           ) : (
             <button onClick={() => setShowAuth(true)}
-              className="flex items-center gap-1 ml-1 text-[11px] px-2 py-1 rounded
-                text-warm-600 hover:text-warm-300 hover:bg-warm-900 transition-colors">
-              <LogIn className="w-3 h-3" /> Sign in
+              className="flex items-center gap-1.5 ml-1 text-xs px-3 py-1.5 rounded-lg border
+                border-warm-700/60 text-warm-300 hover:bg-warm-800 hover:text-warm-100 transition-colors">
+              <LogIn className="w-3.5 h-3.5" /> Sign in
             </button>
           )}
         </div>

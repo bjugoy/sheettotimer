@@ -281,30 +281,6 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
       ════════════════════════════════════════════════════════════ */}
       <div className="flex-1 min-w-0 flex flex-col bg-warm-950">
 
-        {/* Nav links — only shown when the feature is available for this plan */}
-        {(onOpenEditor || onOpenTeleprompter) && (
-          <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5
-            border-b border-warm-800/40">
-            {onOpenEditor && (
-              <button onClick={onOpenEditor}
-                className="text-[11px] text-warm-700 hover:text-warm-400 px-2 py-0.5 rounded
-                  hover:bg-warm-900 transition-colors">
-                Editor
-              </button>
-            )}
-            {onOpenEditor && onOpenTeleprompter && (
-              <span className="text-warm-800 text-[10px]">·</span>
-            )}
-            {onOpenTeleprompter && (
-              <button onClick={onOpenTeleprompter}
-                className="text-[11px] text-warm-700 hover:text-warm-400 px-2 py-0.5 rounded
-                  hover:bg-warm-900 transition-colors">
-                Presenter
-              </button>
-            )}
-          </div>
-        )}
-
         {/* ── Schedule table ────────────────────────────────────────── */}
         <div className="flex-[3] min-h-0 overflow-auto border-b-2 border-warm-800/60">
           <ScheduleTablePanel nowMs={nowMs} />

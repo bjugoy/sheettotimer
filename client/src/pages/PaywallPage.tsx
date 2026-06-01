@@ -285,9 +285,18 @@ export function PaywallPage() {
           })}
         </div>
 
-        <p className="mt-8 text-xs text-warm-700">
-          Cancel any time. You'll keep access until the end of your billing period.
-        </p>
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <p className="text-xs text-warm-700">
+            Cancel any time · Access continues until end of billing period
+          </p>
+          {currentPlan !== 'free' && (
+            <button
+              onClick={() => alert('To cancel your subscription, manage it through your payment provider. Support: support@sheettotimer.com')}
+              className="text-[11px] text-warm-800 hover:text-warm-600 underline underline-offset-2 transition-colors">
+              Cancel subscription
+            </button>
+          )}
+        </div>
       </main>
     </div>
   );
