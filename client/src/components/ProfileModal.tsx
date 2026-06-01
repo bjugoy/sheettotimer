@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Radio, Mail, CreditCard, Trash2, Check, Pencil } from 'lucide-react';
+import { X, Radio, Mail, CreditCard, Trash2, Check, Pencil, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
+import { startCheckout, openBillingPortal } from '../lib/billing';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
@@ -11,10 +12,9 @@ interface Props {
 }
 
 const PLAN_DESCRIPTION = {
-  free:      'Upload & timer view only',
-  premium1:  'Editor · Room for 5 · Presenter mode',
-  premium2:  'Editor · Room for 15 · Presenter mode',
-  premium3:  'Editor · Room for 50 · Presenter mode',
+  free:     'Upload & timer view only',
+  premium1: 'Google Sheets · Editor · Room for 5 · Presenter',
+  premium2: 'Google Sheets · Editor · Room for 15 · Presenter · Custom columns',
 } as const;
 
 export function ProfileModal({ onClose }: Props) {
@@ -47,6 +47,8 @@ export function ProfileModal({ onClose }: Props) {
   const [deleteLoading, setDeleteLoading]   = useState(false);
   const [deleteError, setDeleteError]       = useState('');
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [billingLoading, setBillingLoading] = useState<'pro' | 'studio' | 'portal' | null>(null);
+  const [billingError, setBillingError]     = useState('');
 
   const planFeatures = getPlanFeatures(plan);
   const badgeCls     = PLAN_BADGE_COLOR[plan];
@@ -92,6 +94,32 @@ export function ProfileModal({ onClose }: Props) {
       setConfirmSignOut(true);
     } else {
       void doSignOut();
+    }
+  };
+
+  const handleUpgrade = async (plan: 'premium1' | 'premium2') => {
+    const token = (await import('../lib/supabase')).supabase.auth.getSession()
+      .then(r => r.data.session?.access_token ?? '');
+    setBillingError('');
+    setBillingLoading(plan === 'premium1' ? 'pro' : 'studio');
+    try {
+      await startCheckout(plan, await token);
+    } catch (e) {
+      setBillingError(e instanceof Error ? e.message : 'Something went wrong');
+      setBillingLoading(null);
+    }
+  };
+
+  const handlePortal = async () => {
+    const token = (await import('../lib/supabase')).supabase.auth.getSession()
+      .then(r => r.data.session?.access_token ?? '');
+    setBillingError('');
+    setBillingLoading('portal');
+    try {
+      await openBillingPortal(await token);
+    } catch (e) {
+      setBillingError(e instanceof Error ? e.message : 'Something went wrong');
+      setBillingLoading(null);
     }
   };
 
@@ -186,16 +214,56 @@ export function ProfileModal({ onClose }: Props) {
               </span>
               <span className="text-xs text-warm-400">{PLAN_DESCRIPTION[plan]}</span>
             </div>
-            <button
-              disabled
-              title="Subscription management coming soon"
-              className="w-full flex items-center justify-center gap-2 py-2 mt-1
-                bg-warm-800/40 border border-warm-700/30 rounded-lg text-xs text-warm-400
-                cursor-not-allowed opacity-60">
-              <CreditCard className="w-3.5 h-3.5" />
-              Manage subscription
-              <span className="ml-auto text-[9px] text-warm-500 uppercase tracking-wide">Soon</span>
-            </button>
+
+            {billingError && (
+              <p className="text-[10px] text-crimson-300">{billingError}</p>
+            )}
+
+            {plan === 'free' ? (
+              <div className="space-y-1.5 pt-0.5">
+                <button
+                  onClick={() => handleUpgrade('premium1')}
+                  disabled={!!billingLoading}
+                  className="w-full flex items-center justify-between px-3 py-2
+                    bg-amber-900/20 hover:bg-amber-900/30 border border-amber-700/40
+                    hover:border-amber-600/50 rounded-lg transition-colors disabled:opacity-50">
+                  <div className="flex items-center gap-2">
+                    {billingLoading === 'pro'
+                      ? <Loader2 className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                      : <Check className="w-3.5 h-3.5 text-amber-300" />}
+                    <span className="text-xs font-medium text-amber-200">Pro</span>
+                  </div>
+                  <span className="text-[11px] text-amber-400">$8.99 / mo</span>
+                </button>
+                <button
+                  onClick={() => handleUpgrade('premium2')}
+                  disabled={!!billingLoading}
+                  className="w-full flex items-center justify-between px-3 py-2
+                    bg-crimson-900/20 hover:bg-crimson-900/30 border border-crimson-700/40
+                    hover:border-crimson-600/50 rounded-lg transition-colors disabled:opacity-50">
+                  <div className="flex items-center gap-2">
+                    {billingLoading === 'studio'
+                      ? <Loader2 className="w-3.5 h-3.5 text-crimson-300 animate-spin" />
+                      : <Check className="w-3.5 h-3.5 text-crimson-300" />}
+                    <span className="text-xs font-medium text-crimson-200">Studio</span>
+                  </div>
+                  <span className="text-[11px] text-crimson-400">$14.99 / mo</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handlePortal}
+                disabled={!!billingLoading}
+                className="w-full flex items-center justify-center gap-2 py-2 mt-1
+                  bg-warm-800/40 hover:bg-warm-800/70 border border-warm-700/40
+                  hover:border-warm-600/60 rounded-lg text-xs text-warm-300
+                  transition-colors disabled:opacity-50">
+                {billingLoading === 'portal'
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <CreditCard className="w-3.5 h-3.5" />}
+                Manage billing
+              </button>
+            )}
           </div>
 
           {/* Danger zone */}

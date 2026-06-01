@@ -43,3 +43,35 @@ export async function deleteUser(userId: string): Promise<boolean> {
   const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
   return !error;
 }
+
+export async function getStripeCustomerId(userId: string): Promise<string | null> {
+  if (!supabaseAdmin) return null;
+  const { data } = await supabaseAdmin
+    .from('profiles')
+    .select('stripe_customer_id')
+    .eq('id', userId)
+    .single();
+  return (data?.stripe_customer_id as string | null) ?? null;
+}
+
+export async function setStripeCustomerId(userId: string, customerId: string): Promise<void> {
+  if (!supabaseAdmin) return;
+  await supabaseAdmin
+    .from('profiles')
+    .update({ stripe_customer_id: customerId })
+    .eq('id', userId);
+}
+
+export async function updatePlanByStripeCustomerId(customerId: string, plan: Plan): Promise<void> {
+  if (!supabaseAdmin) return;
+  await supabaseAdmin
+    .from('profiles')
+    .update({ plan })
+    .eq('stripe_customer_id', customerId);
+}
+
+export async function getUserEmail(userId: string): Promise<string | null> {
+  if (!supabaseAdmin) return null;
+  const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+  return user?.email ?? null;
+}

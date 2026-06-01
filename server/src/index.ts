@@ -10,7 +10,8 @@ import type {
   ScheduleItem,
 } from '@program-timer/shared';
 import { recalculate, PLAN_ROOM_CAPACITY } from '@program-timer/shared';
-import { verifyToken, deleteUser } from './auth';
+import { verifyToken, deleteUser, getStripeCustomerId, setStripeCustomerId, updatePlanByStripeCustomerId, getUserEmail } from './auth';
+import { stripe, PRICE_IDS, getPriceToPlan } from './stripe';
 import {
   createRoom,
   getRoom,
@@ -53,6 +54,37 @@ const allowedOrigins: string[] = CLIENT_URL.split(',').flatMap(raw => {
 if (isProd) app.set('trust proxy', 1);
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+// ── Stripe webhook — must use raw body BEFORE express.json() ─────────────────
+app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig    = req.headers['stripe-signature'] as string;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) { res.status(500).json({ error: 'Webhook secret not configured' }); return; }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, secret);
+  } catch {
+    res.status(400).json({ error: 'Invalid signature' }); return;
+  }
+
+  const priceToPlan = getPriceToPlan();
+
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    const sub      = event.data.object;
+    const priceId  = sub.items.data[0]?.price.id ?? '';
+    const plan     = priceToPlan[priceId] ?? 'free';
+    await updatePlanByStripeCustomerId(sub.customer as string, plan);
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object;
+    await updatePlanByStripeCustomerId(sub.customer as string, 'free');
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '5mb' }));
 app.use(
   session({
@@ -324,6 +356,58 @@ app.delete('/api/account', async (req, res) => {
   const ok = await deleteUser(verified.userId);
   if (!ok) { res.status(500).json({ error: 'Failed to delete account' }); return; }
   res.json({ ok: true });
+});
+
+// ─── REST: Billing ───────────────────────────────────────────────────────────
+
+app.post('/api/billing/checkout', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const verified = await verifyToken(token);
+  if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
+
+  const { plan } = req.body as { plan: 'premium1' | 'premium2' };
+  const priceId  = PRICE_IDS[plan];
+  if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
+
+  let customerId = await getStripeCustomerId(verified.userId);
+  if (!customerId) {
+    const email    = await getUserEmail(verified.userId);
+    const customer = await stripe.customers.create({
+      email:    email ?? undefined,
+      metadata: { supabase_id: verified.userId },
+    });
+    customerId = customer.id;
+    await setStripeCustomerId(verified.userId, customerId);
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    customer:              customerId,
+    mode:                  'subscription',
+    line_items:            [{ price: priceId, quantity: 1 }],
+    success_url:           `${CLIENT_URL}/?billing=success`,
+    cancel_url:            `${CLIENT_URL}/`,
+    allow_promotion_codes: true,
+  });
+
+  res.json({ url: session.url });
+});
+
+app.post('/api/billing/portal', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const verified = await verifyToken(token);
+  if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
+
+  const customerId = await getStripeCustomerId(verified.userId);
+  if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer:   customerId,
+    return_url: `${CLIENT_URL}/`,
+  });
+
+  res.json({ url: session.url });
 });
 
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────

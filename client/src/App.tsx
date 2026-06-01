@@ -47,10 +47,11 @@ export default function App() {
   const sessionEndedReason = useSessionStore(s => s.sessionEndedReason);
   const leaveSession      = useSessionStore(s => s.leaveSession);
 
-  const authUser   = useAuthStore(s => s.user);
-  const plan       = useAuthStore(s => s.plan);
-  const getToken   = useAuthStore(s => s.getToken);
-  const features   = getPlanFeatures(plan);
+  const authUser      = useAuthStore(s => s.user);
+  const plan          = useAuthStore(s => s.plan);
+  const getToken      = useAuthStore(s => s.getToken);
+  const refreshPlan   = useAuthStore(s => s.refreshPlan);
+  const features      = getPlanFeatures(plan);
 
   // If coming from dashboard or landing "try for free", skip the join screen
   const fromDashboard = locState.from === 'dashboard';
@@ -86,6 +87,15 @@ export default function App() {
   useEffect(() => {
     if (roomCode && view === 'join') setView(items.length > 0 ? 'timer' : 'load');
   }, [roomCode]);
+
+  // After Stripe redirects back, refresh plan from Supabase and clean the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('billing') === 'success') {
+      refreshPlan();
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (showEditor && !features.canUseEditor) setShowEditor(false);
