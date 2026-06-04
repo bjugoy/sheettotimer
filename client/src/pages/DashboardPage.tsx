@@ -246,8 +246,10 @@ export function DashboardPage() {
             <span className="text-xs font-semibold text-warm-500 uppercase tracking-wider">
               Productions
             </span>
-            <button onClick={() => setAddingProd(true)}
-              className="text-warm-700 hover:text-warm-400 transition-colors" title="New production">
+            <button
+              onClick={() => features.canSaveEvents ? setAddingProd(true) : setShowProfile(true)}
+              className="text-warm-700 hover:text-warm-400 transition-colors"
+              title={features.canSaveEvents ? 'New production' : 'Upgrade to create productions'}>
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -280,10 +282,17 @@ export function DashboardPage() {
               <div className="px-4 py-8 text-center">
                 <Folder className="w-6 h-6 text-warm-800 mx-auto mb-2" />
                 <p className="text-xs text-warm-700">No productions yet</p>
-                <button onClick={() => setAddingProd(true)}
-                  className="mt-2 text-xs text-crimson-500 hover:text-crimson-400 transition-colors">
-                  + Create your first
-                </button>
+                {features.canSaveEvents ? (
+                  <button onClick={() => setAddingProd(true)}
+                    className="mt-2 text-xs text-crimson-500 hover:text-crimson-400 transition-colors">
+                    + Create your first
+                  </button>
+                ) : (
+                  <button onClick={() => setShowProfile(true)}
+                    className="mt-2 text-xs text-amber-500/80 hover:text-amber-400 transition-colors">
+                    Upgrade to create productions
+                  </button>
+                )}
               </div>
             ) : (
               prods.map(prod => (
@@ -320,10 +329,12 @@ export function DashboardPage() {
                     {loadingEvents ? 'Loading…' : `${events.length} event${events.length !== 1 ? 's' : ''}`}
                   </p>
                 </div>
-                <button onClick={() => setAddingEvent(true)}
+                <button
+                  onClick={() => features.canSaveEvents ? setAddingEvent(true) : setShowProfile(true)}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-warm-800/60
                     hover:bg-warm-700/60 border border-warm-700/50 text-warm-300 rounded transition-colors">
-                  <Plus className="w-3 h-3" /> New event
+                  <Plus className="w-3 h-3" />
+                  {features.canSaveEvents ? 'New event' : 'Upgrade to add events'}
                 </button>
               </div>
 
@@ -359,12 +370,21 @@ export function DashboardPage() {
                     <p className="text-xs text-warm-700 mt-1 mb-4">
                       Each event is a single show day with its own schedule.
                     </p>
-                    <button onClick={() => setAddingEvent(true)}
-                      className="flex items-center gap-2 text-sm px-4 py-2 bg-crimson-800/60
-                        hover:bg-crimson-700/60 border border-crimson-700/50 text-warm-200
-                        rounded-lg transition-colors">
-                      <Plus className="w-3.5 h-3.5" /> Add first event
-                    </button>
+                    {features.canSaveEvents ? (
+                      <button onClick={() => setAddingEvent(true)}
+                        className="flex items-center gap-2 text-sm px-4 py-2 bg-crimson-800/60
+                          hover:bg-crimson-700/60 border border-crimson-700/50 text-warm-200
+                          rounded-lg transition-colors">
+                        <Plus className="w-3.5 h-3.5" /> Add first event
+                      </button>
+                    ) : (
+                      <button onClick={() => setShowProfile(true)}
+                        className="flex items-center gap-2 text-sm px-4 py-2
+                          bg-amber-900/20 hover:bg-amber-900/30 border border-amber-700/40
+                          text-amber-300 rounded-lg transition-colors">
+                        Upgrade to add events
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
