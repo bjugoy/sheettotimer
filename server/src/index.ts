@@ -427,6 +427,37 @@ app.post('/api/billing/sync', async (req, res) => {
   }
 });
 
+app.post('/api/billing/change-plan', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const verified = await verifyToken(token);
+  if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
+
+  const { plan } = req.body as { plan: 'premium1' | 'premium2' };
+  const priceId  = PRICE_IDS[plan];
+  if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
+
+  try {
+    const customerId = await getStripeCustomerId(verified.userId);
+    if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
+
+    const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'active', limit: 1 });
+    const sub = subscriptions.data[0];
+    if (!sub) { res.status(400).json({ error: 'No active subscription found' }); return; }
+
+    await stripe.subscriptions.update(sub.id, {
+      items:              [{ id: sub.items.data[0].id, price: priceId }],
+      proration_behavior: 'always_invoice',
+    });
+
+    await updatePlanByStripeCustomerId(customerId, plan);
+    res.json({ plan });
+  } catch (err) {
+    console.error('[billing/change-plan]', err);
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Plan change failed' });
+  }
+});
+
 app.post('/api/billing/portal', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
