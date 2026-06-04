@@ -23,6 +23,15 @@ export async function startCheckout(plan: Exclude<Plan, 'free'>, token: string):
   window.location.href = data.url;
 }
 
+export async function syncPlanFromStripe(token: string): Promise<string | null> {
+  try {
+    const data = await postJSON('/api/billing/sync', token);
+    return data.plan ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function openBillingPortal(token: string): Promise<void> {
   const data = await postJSON('/api/billing/portal', token);
   window.location.href = data.url;

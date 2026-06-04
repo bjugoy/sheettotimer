@@ -14,6 +14,7 @@ import { useAuthStore } from './store/authStore';
 import { useSocket } from './hooks/useSocket';
 import { useGoogleSheets } from './hooks/useGoogleSheets';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from './lib/plans';
+import { syncPlanFromStripe } from './lib/billing';
 import { getEvent, saveEventSchedule } from './lib/db';
 import { cn } from './utils/timeUtils';
 
@@ -50,6 +51,7 @@ export default function App() {
   const authUser      = useAuthStore(s => s.user);
   const plan          = useAuthStore(s => s.plan);
   const getToken      = useAuthStore(s => s.getToken);
+  const setPlan       = useAuthStore(s => s.setPlan);
   const refreshPlan   = useAuthStore(s => s.refreshPlan);
   const features      = getPlanFeatures(plan);
 
@@ -88,12 +90,19 @@ export default function App() {
     if (roomCode && view === 'join') setView(items.length > 0 ? 'timer' : 'load');
   }, [roomCode]);
 
-  // After Stripe redirects back, refresh plan from Supabase and clean the URL
+  // After Stripe redirects back, sync plan directly from Stripe then clean the URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('billing') === 'success') {
+    if (params.get('billing') !== 'success') return;
+    window.history.replaceState({}, '', window.location.pathname);
+    const token = getToken();
+    if (token) {
+      syncPlanFromStripe(token).then(plan => {
+        if (plan) setPlan(plan as import('./lib/plans').Plan);
+        else refreshPlan();
+      });
+    } else {
       refreshPlan();
-      window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 

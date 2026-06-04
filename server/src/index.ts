@@ -398,6 +398,35 @@ app.post('/api/billing/checkout', async (req, res) => {
   }
 });
 
+// Sync plan from Stripe — called on ?billing=success redirect as a webhook fallback
+app.post('/api/billing/sync', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const verified = await verifyToken(token);
+  if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
+
+  try {
+    const customerId = await getStripeCustomerId(verified.userId);
+    if (!customerId) { res.json({ plan: 'free' }); return; }
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status:   'active',
+      limit:    1,
+    });
+
+    const priceToPlan = getPriceToPlan();
+    const priceId     = subscriptions.data[0]?.items.data[0]?.price.id ?? '';
+    const plan        = priceToPlan[priceId] ?? 'free';
+
+    await updatePlanByStripeCustomerId(customerId, plan);
+    res.json({ plan });
+  } catch (err) {
+    console.error('[billing/sync]', err);
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Sync failed' });
+  }
+});
+
 app.post('/api/billing/portal', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
