@@ -1,27 +1,29 @@
 import { apiUrl } from './api';
 import type { Plan } from '@program-timer/shared';
 
-async function authHeaders(token: string) {
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+async function postJSON(path: string, token: string, body?: object) {
+  const res = await fetch(apiUrl(path), {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const text = await res.text();
+  let data: Record<string, string>;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Server error (${res.status}) — check that VITE_SERVER_URL points to your Heroku app`);
+  }
+  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+  return data;
 }
 
 export async function startCheckout(plan: Exclude<Plan, 'free'>, token: string): Promise<void> {
-  const res  = await fetch(apiUrl('/api/billing/checkout'), {
-    method:  'POST',
-    headers: await authHeaders(token),
-    body:    JSON.stringify({ plan }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? 'Failed to start checkout');
+  const data = await postJSON('/api/billing/checkout', token, { plan });
   window.location.href = data.url;
 }
 
 export async function openBillingPortal(token: string): Promise<void> {
-  const res  = await fetch(apiUrl('/api/billing/portal'), {
-    method:  'POST',
-    headers: await authHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? 'Failed to open portal');
+  const data = await postJSON('/api/billing/portal', token);
   window.location.href = data.url;
 }

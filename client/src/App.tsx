@@ -546,8 +546,7 @@ export default function App() {
 
           {authUser ? (
             <div className="flex items-center gap-2 ml-1">
-              {/* Plan badge — opens paywall */}
-              <button onClick={() => navigate('/paywall')}
+              <button onClick={() => setShowProfile(true)}
                 className={cn(
                   'text-xs px-3 py-1.5 rounded-lg border font-semibold transition-colors',
                   PLAN_BADGE_COLOR[plan],

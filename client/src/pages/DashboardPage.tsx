@@ -167,9 +167,10 @@ export function DashboardPage() {
               <LogIn className="w-3.5 h-3.5" />
               Join Room
             </button>
-            <span className={cn('text-xs px-2.5 py-1.5 rounded-lg border', badgeCls)}>
+            <button onClick={() => setShowProfile(true)}
+              className={cn('text-xs px-2.5 py-1.5 rounded-lg border transition-colors hover:brightness-125', badgeCls)}>
               {getPlanFeatures(plan).label}
-            </span>
+            </button>
             <button onClick={() => setShowProfile(true)}
               className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors max-w-[140px]">
               <UserCircle className="w-3.5 h-3.5 shrink-0" />

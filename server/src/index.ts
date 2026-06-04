@@ -370,27 +370,32 @@ app.post('/api/billing/checkout', async (req, res) => {
   const priceId  = PRICE_IDS[plan];
   if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
-  let customerId = await getStripeCustomerId(verified.userId);
-  if (!customerId) {
-    const email    = await getUserEmail(verified.userId);
-    const customer = await stripe.customers.create({
-      email:    email ?? undefined,
-      metadata: { supabase_id: verified.userId },
+  try {
+    let customerId = await getStripeCustomerId(verified.userId);
+    if (!customerId) {
+      const email    = await getUserEmail(verified.userId);
+      const customer = await stripe.customers.create({
+        email:    email ?? undefined,
+        metadata: { supabase_id: verified.userId },
+      });
+      customerId = customer.id;
+      await setStripeCustomerId(verified.userId, customerId);
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer:              customerId,
+      mode:                  'subscription',
+      line_items:            [{ price: priceId, quantity: 1 }],
+      success_url:           `${CLIENT_URL}/?billing=success`,
+      cancel_url:            `${CLIENT_URL}/`,
+      allow_promotion_codes: true,
     });
-    customerId = customer.id;
-    await setStripeCustomerId(verified.userId, customerId);
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('[billing/checkout]', err);
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Checkout failed' });
   }
-
-  const session = await stripe.checkout.sessions.create({
-    customer:              customerId,
-    mode:                  'subscription',
-    line_items:            [{ price: priceId, quantity: 1 }],
-    success_url:           `${CLIENT_URL}/?billing=success`,
-    cancel_url:            `${CLIENT_URL}/`,
-    allow_promotion_codes: true,
-  });
-
-  res.json({ url: session.url });
 });
 
 app.post('/api/billing/portal', async (req, res) => {
@@ -399,15 +404,20 @@ app.post('/api/billing/portal', async (req, res) => {
   const verified = await verifyToken(token);
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
-  const customerId = await getStripeCustomerId(verified.userId);
-  if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
+  try {
+    const customerId = await getStripeCustomerId(verified.userId);
+    if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer:   customerId,
-    return_url: `${CLIENT_URL}/`,
-  });
+    const session = await stripe.billingPortal.sessions.create({
+      customer:   customerId,
+      return_url: `${CLIENT_URL}/`,
+    });
 
-  res.json({ url: session.url });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('[billing/portal]', err);
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Portal failed' });
+  }
 });
 
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────

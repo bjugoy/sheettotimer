@@ -35,6 +35,7 @@ export function ProfileModal({ onClose }: Props) {
       .filter(([id, s]) => id !== activeEventId && s.items.some(i => i.status === 'active'))
       .map(([id]) => id),
   ].filter(Boolean).length;
+  const getToken          = useAuthStore(s => s.getToken);
   const updateDisplayName = useAuthStore(s => s.updateDisplayName);
   const deleteAccount     = useAuthStore(s => s.deleteAccount);
 
@@ -97,13 +98,13 @@ export function ProfileModal({ onClose }: Props) {
     }
   };
 
-  const handleUpgrade = async (plan: 'premium1' | 'premium2') => {
-    const token = (await import('../lib/supabase')).supabase.auth.getSession()
-      .then(r => r.data.session?.access_token ?? '');
+  const handleUpgrade = async (targetPlan: 'premium1' | 'premium2') => {
+    const token = getToken();
+    if (!token) { setBillingError('Not signed in'); return; }
     setBillingError('');
-    setBillingLoading(plan === 'premium1' ? 'pro' : 'studio');
+    setBillingLoading(targetPlan === 'premium1' ? 'pro' : 'studio');
     try {
-      await startCheckout(plan, await token);
+      await startCheckout(targetPlan, token);
     } catch (e) {
       setBillingError(e instanceof Error ? e.message : 'Something went wrong');
       setBillingLoading(null);
@@ -111,12 +112,12 @@ export function ProfileModal({ onClose }: Props) {
   };
 
   const handlePortal = async () => {
-    const token = (await import('../lib/supabase')).supabase.auth.getSession()
-      .then(r => r.data.session?.access_token ?? '');
+    const token = getToken();
+    if (!token) { setBillingError('Not signed in'); return; }
     setBillingError('');
     setBillingLoading('portal');
     try {
-      await openBillingPortal(await token);
+      await openBillingPortal(token);
     } catch (e) {
       setBillingError(e instanceof Error ? e.message : 'Something went wrong');
       setBillingLoading(null);
