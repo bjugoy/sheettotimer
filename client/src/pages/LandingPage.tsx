@@ -21,35 +21,24 @@ const PLANS = [
   {
     id: 'premium1',
     name: 'Pro',
-    price: '$19',
+    price: '$8.99',
     period: '/mo',
     color: 'border-amber-700/50',
     badge: 'text-amber-300',
-    features: ['Everything in Free', 'Schedule editor', 'Room for 5 people', 'Presenter screen', 'Save events & days'],
-    cta: 'Start free trial',
+    features: ['Everything in Free', 'Connect Google Sheets', 'Schedule editor', 'Room for 5 devices', 'Presenter screen', 'Save productions & events'],
+    cta: 'Get started',
     ctaCls: 'bg-amber-800/60 hover:bg-amber-700/60 text-amber-100 border border-amber-700/60',
   },
   {
     id: 'premium2',
     name: 'Studio',
-    price: '$49',
+    price: '$14.99',
     period: '/mo',
     color: 'border-crimson-700/50',
     badge: 'text-crimson-300',
-    features: ['Everything in Pro', 'Room for 15 people'],
-    cta: 'Start free trial',
+    features: ['Everything in Pro', 'Room for 15 devices', 'Custom schedule columns'],
+    cta: 'Get started',
     ctaCls: 'bg-crimson-800/60 hover:bg-crimson-700/60 text-crimson-100 border border-crimson-700/60',
-  },
-  {
-    id: 'premium3',
-    name: 'Enterprise',
-    price: '$99',
-    period: '/mo',
-    color: 'border-moss-700/50',
-    badge: 'text-moss-300',
-    features: ['Everything in Studio', 'Room for 50 people'],
-    cta: 'Start free trial',
-    ctaCls: 'bg-moss-800/60 hover:bg-moss-700/60 text-moss-100 border border-moss-700/60',
   },
 ] as const;
 
@@ -165,7 +154,7 @@ export function LandingPage() {
           <h2 className="text-3xl font-bold text-warm-100 mb-2">Simple pricing</h2>
           <p className="text-warm-400">Start free. Upgrade when you need rooms and collaboration.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
           {PLANS.map(plan => (
             <div key={plan.id}
               className={cn('bg-warm-900/60 border rounded-xl p-6 flex flex-col', plan.color)}>

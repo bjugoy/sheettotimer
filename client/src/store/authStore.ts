@@ -2,26 +2,25 @@ import { create } from 'zustand';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Plan } from '../lib/plans';
 import { supabase } from '../lib/supabase';
-import { configureRC } from '../lib/revenuecat';
+import { apiUrl } from '../lib/api';
 
 interface AuthState {
-  user:           User | null;
-  session:        Session | null;
-  plan:           Plan;
-  loading:        boolean;
-  pendingPaywall: boolean;
+  user:    User | null;
+  session: Session | null;
+  plan:    Plan;
+  loading: boolean;
 
-  initialize:         () => Promise<void>;
-  signIn:             (email: string, password: string) => Promise<string | null>;
-  signUp:             (email: string, password: string, name: string) => Promise<string | null>;
-  signInWithGoogle:   () => Promise<string | null>;
-  signOut:            () => Promise<void>;
-  updateDisplayName:  (name: string) => Promise<string | null>;
-  deleteAccount:      () => Promise<string | null>;
-  getToken:           () => string | null;
-  clearPaywall:       () => void;
-  setPlan:            (plan: Plan) => void;
-  refreshPlan:        () => Promise<void>;
+  initialize:        () => Promise<void>;
+  signIn:            (email: string, password: string) => Promise<string | null>;
+  signUp:            (email: string, password: string, name: string) => Promise<string | null>;
+  signInWithGoogle:  () => Promise<string | null>;
+  resetPassword:     (email: string) => Promise<string | null>;
+  signOut:           () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<string | null>;
+  deleteAccount:     () => Promise<string | null>;
+  getToken:          () => string | null;
+  setPlan:           (plan: Plan) => void;
+  refreshPlan:       () => Promise<void>;
 }
 
 async function fetchPlan(userId: string): Promise<Plan> {
@@ -34,11 +33,10 @@ async function fetchPlan(userId: string): Promise<Plan> {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user:           null,
-  session:        null,
-  plan:           'free',
-  loading:        true,
-  pendingPaywall: false,
+  user:    null,
+  session: null,
+  plan:    'free',
+  loading: true,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -51,22 +49,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        configureRC(session.user.id); // fire-and-forget — lazy loads RC SDK
         const plan = await fetchPlan(session.user.id);
-
-        const emailPaywall = localStorage.getItem('stt-paywall') === '1';
-        if (emailPaywall) localStorage.removeItem('stt-paywall');
-
-        // New Google OAuth users: created_at ≈ last_sign_in_at (within 60s)
-        const created     = new Date(session.user.created_at).getTime();
-        const lastSignIn  = new Date(session.user.last_sign_in_at ?? session.user.created_at).getTime();
-        const isNewGoogle = _event === 'SIGNED_IN'
-          && session.user.app_metadata?.provider === 'google'
-          && Math.abs(lastSignIn - created) < 60_000;
-
-        set({ user: session.user, session, plan, pendingPaywall: emailPaywall || isNewGoogle });
+        set({ user: session.user, session, plan });
       } else {
-        set({ user: null, session: null, plan: 'free', pendingPaywall: false });
+        set({ user: null, session: null, plan: 'free' });
       }
     });
   },
@@ -93,6 +79,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return error?.message ?? null;
   },
 
+  resetPassword: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    return error?.message ?? null;
+  },
+
   updateDisplayName: async (name) => {
     const { error, data } = await supabase.auth.updateUser({ data: { full_name: name } });
     if (error) return error.message;
@@ -101,8 +94,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   deleteAccount: async () => {
-    const { error } = await supabase.rpc('delete_own_account');
-    if (error) return error.message;
+    const token = get().session?.access_token;
+    if (!token) return 'Not signed in';
+    try {
+      const res = await fetch(apiUrl('/api/account'), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return (data as { error?: string }).error ?? 'Failed to delete account';
+      }
+    } catch {
+      return 'Network error — please try again';
+    }
     await supabase.auth.signOut();
     set({ user: null, session: null, plan: 'free' });
     return null;
@@ -113,10 +118,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, session: null, plan: 'free' });
   },
 
-  getToken:     () => get().session?.access_token ?? null,
-  clearPaywall: () => set({ pendingPaywall: false }),
-  setPlan:      (plan) => set({ plan }),
-  refreshPlan:  async () => {
+  getToken:    () => get().session?.access_token ?? null,
+  setPlan:     (plan) => set({ plan }),
+  refreshPlan: async () => {
     const { user } = get();
     if (!user) return;
     const plan = await fetchPlan(user.id);

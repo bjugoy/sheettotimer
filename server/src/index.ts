@@ -10,6 +10,7 @@ import type {
   ScheduleItem,
 } from '@program-timer/shared';
 import { recalculate, PLAN_ROOM_CAPACITY } from '@program-timer/shared';
+import rateLimit from 'express-rate-limit';
 import { verifyToken, deleteUser, getStripeCustomerId, setStripeCustomerId, updatePlanByStripeCustomerId, getUserEmail } from './auth';
 import { stripe, PRICE_IDS, getPriceToPlan } from './stripe';
 import {
@@ -54,6 +55,13 @@ const allowedOrigins: string[] = CLIENT_URL.split(',').flatMap(raw => {
 if (isProd) app.set('trust proxy', 1);
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
+const billingLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+
+app.use('/api/', apiLimiter);
+app.use('/api/billing/', billingLimiter);
 
 // ── Stripe webhook — must use raw body BEFORE express.json() ─────────────────
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -353,6 +361,19 @@ app.delete('/api/account', async (req, res) => {
   if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
   const verified = await verifyToken(token);
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
+
+  // Cancel any active Stripe subscriptions before deleting the account
+  try {
+    const customerId = await getStripeCustomerId(verified.userId);
+    if (customerId) {
+      const subs = await stripe.subscriptions.list({ customer: customerId, status: 'active', limit: 10 });
+      await Promise.all(subs.data.map(sub => stripe.subscriptions.cancel(sub.id)));
+    }
+  } catch (err) {
+    console.error('[account/delete] Stripe cancellation failed:', err);
+    // Non-fatal — proceed with account deletion
+  }
+
   const ok = await deleteUser(verified.userId);
   if (!ok) { res.status(500).json({ error: 'Failed to delete account' }); return; }
   res.json({ ok: true });
