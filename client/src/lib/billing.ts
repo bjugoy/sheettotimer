@@ -23,11 +23,6 @@ export async function startCheckout(plan: Exclude<Plan, 'free'>, token: string):
   window.location.href = data.url;
 }
 
-export async function changePlan(plan: Exclude<Plan, 'free'>, token: string): Promise<string> {
-  const data = await postJSON('/api/billing/change-plan', token, { plan });
-  return data.plan;
-}
-
 export async function syncPlanFromStripe(token: string): Promise<string | null> {
   try {
     const data = await postJSON('/api/billing/sync', token);

@@ -4,7 +4,7 @@ import { X, Radio, Mail, CreditCard, Trash2, Check, Pencil, Loader2 } from 'luci
 import { useAuthStore } from '../store/authStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
-import { startCheckout, openBillingPortal, changePlan } from '../lib/billing';
+import { startCheckout, openBillingPortal } from '../lib/billing';
 import { cn } from '../utils/timeUtils';
 
 interface Props {
@@ -48,7 +48,7 @@ export function ProfileModal({ onClose }: Props) {
   const [deleteLoading, setDeleteLoading]   = useState(false);
   const [deleteError, setDeleteError]       = useState('');
   const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const [billingLoading, setBillingLoading] = useState<'pro' | 'studio' | 'portal' | 'switch' | null>(null);
+  const [billingLoading, setBillingLoading] = useState<'pro' | 'studio' | 'portal' | null>(null);
   const [billingError, setBillingError]     = useState('');
 
   const planFeatures = getPlanFeatures(plan);
@@ -107,21 +107,6 @@ export function ProfileModal({ onClose }: Props) {
       await startCheckout(targetPlan, token);
     } catch (e) {
       setBillingError(e instanceof Error ? e.message : 'Something went wrong');
-      setBillingLoading(null);
-    }
-  };
-
-  const handleChangePlan = async (targetPlan: 'premium1' | 'premium2') => {
-    const token = getToken();
-    if (!token) { setBillingError('Not signed in'); return; }
-    setBillingError('');
-    setBillingLoading('switch');
-    try {
-      const newPlan = await changePlan(targetPlan, token);
-      useAuthStore.getState().setPlan(newPlan as import('../lib/plans').Plan);
-    } catch (e) {
-      setBillingError(e instanceof Error ? e.message : 'Something went wrong');
-    } finally {
       setBillingLoading(null);
     }
   };
@@ -267,51 +252,18 @@ export function ProfileModal({ onClose }: Props) {
                 </button>
               </div>
             ) : (
-              <div className="space-y-1.5 pt-0.5">
-                {plan === 'premium1' ? (
-                  <button
-                    onClick={() => handleChangePlan('premium2')}
-                    disabled={!!billingLoading}
-                    className="w-full flex items-center justify-between px-3 py-2
-                      bg-crimson-900/20 hover:bg-crimson-900/30 border border-crimson-700/40
-                      hover:border-crimson-600/50 rounded-lg transition-colors disabled:opacity-50">
-                    <div className="flex items-center gap-2">
-                      {billingLoading === 'switch'
-                        ? <Loader2 className="w-3.5 h-3.5 text-crimson-300 animate-spin" />
-                        : <Check className="w-3.5 h-3.5 text-crimson-300" />}
-                      <span className="text-xs font-medium text-crimson-200">Switch to Studio</span>
-                    </div>
-                    <span className="text-[11px] text-crimson-400">$14.99 / mo</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleChangePlan('premium1')}
-                    disabled={!!billingLoading}
-                    className="w-full flex items-center justify-between px-3 py-2
-                      bg-amber-900/20 hover:bg-amber-900/30 border border-amber-700/40
-                      hover:border-amber-600/50 rounded-lg transition-colors disabled:opacity-50">
-                    <div className="flex items-center gap-2">
-                      {billingLoading === 'switch'
-                        ? <Loader2 className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-                        : <Check className="w-3.5 h-3.5 text-amber-300" />}
-                      <span className="text-xs font-medium text-amber-200">Switch to Pro</span>
-                    </div>
-                    <span className="text-[11px] text-amber-400">$8.99 / mo</span>
-                  </button>
-                )}
-                <button
-                  onClick={handlePortal}
-                  disabled={!!billingLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2
-                    bg-warm-800/40 hover:bg-warm-800/70 border border-warm-700/40
-                    hover:border-warm-600/60 rounded-lg text-xs text-warm-300
-                    transition-colors disabled:opacity-50">
-                  {billingLoading === 'portal'
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <CreditCard className="w-3.5 h-3.5" />}
-                  Manage billing
-                </button>
-              </div>
+              <button
+                onClick={handlePortal}
+                disabled={!!billingLoading}
+                className="w-full flex items-center justify-center gap-2 py-2 mt-1
+                  bg-warm-800/40 hover:bg-warm-800/70 border border-warm-700/40
+                  hover:border-warm-600/60 rounded-lg text-xs text-warm-300
+                  transition-colors disabled:opacity-50">
+                {billingLoading === 'portal'
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <CreditCard className="w-3.5 h-3.5" />}
+                Manage billing
+              </button>
             )}
           </div>
 
