@@ -1,4 +1,6 @@
+import './instrument'; // must be first — Sentry SDK setup
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import helmet from 'helmet';
 import express from 'express';
 import http from 'http';
@@ -618,6 +620,10 @@ setInterval(() => {
     console.log(`[cleanup] Expired ${expired.length} room(s): ${expired.join(', ')}`);
   }
 }, 60 * 60 * 1000);
+
+// ─── Sentry Express error handler — must be after all routes ─────────────────
+
+Sentry.setupExpressErrorHandler(app);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
