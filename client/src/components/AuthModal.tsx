@@ -8,18 +8,18 @@ interface Props {
   defaultMode?: 'signin' | 'signup';
 }
 
-type Mode = 'signin' | 'signup' | 'reset';
+type Mode = 'signin' | 'signup' | 'reset' | 'confirm';
 
 export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
   const { signIn, signUp, signInWithGoogle, resetPassword } = useAuthStore();
 
-  const [mode, setMode]       = useState<Mode>(defaultMode);
-  const [email, setEmail]     = useState('');
+  const [mode, setMode]         = useState<Mode>(defaultMode);
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName]       = useState('');
-  const [error, setError]     = useState('');
-  const [info, setInfo]       = useState('');
-  const [loading, setLoading] = useState(false);
+  const [name, setName]         = useState('');
+  const [error, setError]       = useState('');
+  const [info, setInfo]         = useState('');
+  const [loading, setLoading]   = useState(false);
 
   const switchMode = (m: Mode) => { setMode(m); setError(''); setInfo(''); };
 
@@ -50,14 +50,52 @@ export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
     if (err) {
       setError(err);
     } else if (mode === 'signup') {
-      setInfo('Account created! Check your email to confirm your address.');
-      switchMode('signin');
+      setMode('confirm'); // show confirmation screen without clearing the message
     } else {
       onClose();
     }
   };
 
   const inputCls = 'w-full bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-2 pl-9 text-sm text-warm-200 placeholder-warm-700 focus:outline-none focus:border-crimson-700/60 transition-colors';
+
+  // ── Email confirmation screen ─────────────────────────────────────────────
+  if (mode === 'confirm') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-800/60 rounded-xl shadow-2xl">
+          <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-warm-800/40">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-crimson-400" />
+              <span className="text-sm font-semibold text-warm-200">SheetToTimer</span>
+            </div>
+            <button onClick={onClose} className="text-warm-700 hover:text-warm-400 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="px-5 py-8 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-green-900/30 border border-green-700/30
+              flex items-center justify-center mx-auto">
+              <Mail className="w-5 h-5 text-green-400" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-warm-200">Check your email</p>
+              <p className="text-xs text-warm-400 leading-relaxed">
+                We sent a confirmation link to{' '}
+                <span className="text-warm-200">{email}</span>.
+                Click it to activate your account.
+              </p>
+            </div>
+            <button
+              onClick={() => switchMode('signin')}
+              className="w-full py-2 mt-2 border border-warm-700/50 rounded-lg text-xs
+                text-warm-400 hover:text-warm-200 hover:border-warm-600/60 transition-colors">
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">

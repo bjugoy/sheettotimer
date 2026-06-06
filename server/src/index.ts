@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import helmet from 'helmet';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -37,6 +38,10 @@ const server = http.createServer(app);
 const isProd     = process.env.NODE_ENV === 'production';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
 
+if (isProd && !process.env.SESSION_SECRET) {
+  console.warn('[startup] WARNING: SESSION_SECRET is not set — sessions are insecure. Set this env var in production.');
+}
+
 // Support comma-separated origins and automatically include www ↔ non-www variants
 const allowedOrigins: string[] = CLIENT_URL.split(',').flatMap(raw => {
   const origin = raw.trim();
@@ -56,9 +61,15 @@ if (isProd) app.set('trust proxy', 1);
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
+// Security headers — CSP disabled (API server, not HTML); crossOriginEmbedderPolicy off for cross-origin use
+app.use(helmet({
+  contentSecurityPolicy:    false,
+  crossOriginEmbedderPolicy: false,
+}));
+
 // ── Rate limiting ─────────────────────────────────────────────────────────────
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
-const billingLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+const apiLimiter     = rateLimit({ windowMs: 15 * 60 * 1000, max: 100,  standardHeaders: true, legacyHeaders: false });
+const billingLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20,   standardHeaders: true, legacyHeaders: false });
 
 app.use('/api/', apiLimiter);
 app.use('/api/billing/', billingLimiter);
@@ -79,15 +90,23 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
   const priceToPlan = getPriceToPlan();
 
   if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
-    const sub      = event.data.object;
-    const priceId  = sub.items.data[0]?.price.id ?? '';
-    const plan     = priceToPlan[priceId] ?? 'free';
+    const sub     = event.data.object;
+    const priceId = sub.items.data[0]?.price.id ?? '';
+    const plan    = priceToPlan[priceId] ?? 'free';
     await updatePlanByStripeCustomerId(sub.customer as string, plan);
   }
 
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;
     await updatePlanByStripeCustomerId(sub.customer as string, 'free');
+  }
+
+  // Downgrade on failed payment
+  if (event.type === 'invoice.payment_failed') {
+    const inv = event.data.object;
+    if (inv.customer) {
+      await updatePlanByStripeCustomerId(inv.customer as string, 'free');
+    }
   }
 
   res.json({ received: true });
@@ -114,198 +133,263 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
 });
 
+// Per-socket event rate limiter (prevents announcement spam etc.)
+const socketEventCounts = new Map<string, { count: number; resetAt: number }>();
+function socketAllow(socketId: string, limit: number, windowMs: number): boolean {
+  const now   = Date.now();
+  const entry = socketEventCounts.get(socketId);
+  if (!entry || now > entry.resetAt) {
+    socketEventCounts.set(socketId, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count++;
+  return true;
+}
+
 io.on('connection', (socket) => {
   // ── Room create (requires premium auth token) ────────────────────────────
   socket.on('room:create', async ({ name, authToken }) => {
-    const verified = await verifyToken(authToken);
-    if (!verified) {
-      socket.emit('error', 'Authentication required to create a room');
-      return;
-    }
-    const capacity = PLAN_ROOM_CAPACITY[verified.plan];
-    if (capacity === 0) {
-      socket.emit('error', 'A premium plan is required to create a room');
-      return;
-    }
+    try {
+      const verified = await verifyToken(authToken);
+      if (!verified) {
+        socket.emit('error', 'Authentication required to create a room');
+        return;
+      }
+      const capacity = PLAN_ROOM_CAPACITY[verified.plan];
+      if (capacity === 0) {
+        socket.emit('error', 'A premium plan is required to create a room');
+        return;
+      }
 
-    const room   = createRoom(verified.userId, capacity);
-    const result = joinRoom(room.code, socket.id, name, 'operator');
-    if ('error' in result) { socket.emit('error', result.error); return; }
+      const room   = createRoom(verified.userId, capacity);
+      const result = joinRoom(room.code, socket.id, name, 'operator');
+      if ('error' in result) { socket.emit('error', result.error); return; }
 
-    registerSocket(socket.id, room.code);
-    socket.join(room.code);
-    socket.emit('room:joined', { room, user: result });
-    io.to(room.code).emit('room:users', getRoomUsers(room.code));
+      registerSocket(socket.id, room.code);
+      socket.join(room.code);
+      socket.emit('room:joined', { room, user: result });
+      io.to(room.code).emit('room:users', getRoomUsers(room.code));
+    } catch (err) {
+      console.error('[socket:room:create]', err);
+      socket.emit('error', 'Failed to create room');
+    }
   });
 
   // ── Room join — always viewer; optional auth identifies registered users ──
   socket.on('room:join', async ({ code, name, authToken }) => {
-    let userId: string | undefined;
-    if (authToken) {
-      const verified = await verifyToken(authToken);
-      if (verified) userId = verified.userId;
+    try {
+      if (typeof code !== 'string' || !/^[A-Z0-9]{4,8}$/.test(code)) {
+        socket.emit('error', 'Invalid room code');
+        return;
+      }
+      let userId: string | undefined;
+      if (authToken) {
+        const verified = await verifyToken(authToken);
+        if (verified) userId = verified.userId;
+      }
+      const existingRoom = getRoom(code);
+      if (!existingRoom) { socket.emit('error', `Room "${code}" not found`); return; }
+
+      // Room owner rejoining gets their operator role back automatically
+      const role = (userId && userId === existingRoom.ownerId) ? 'operator' : 'viewer';
+
+      const result = joinRoom(code, socket.id, name, role, userId);
+      if ('error' in result) { socket.emit('error', result.error); return; }
+
+      registerSocket(socket.id, code);
+      socket.join(code);
+      socket.emit('room:joined', { room: existingRoom, user: result });
+      io.to(code).emit('room:users', getRoomUsers(code));
+    } catch (err) {
+      console.error('[socket:room:join]', err);
+      socket.emit('error', 'Failed to join room');
     }
-    const existingRoom = getRoom(code);
-    if (!existingRoom) { socket.emit('error', `Room "${code}" not found`); return; }
-
-    // Room owner rejoining gets their operator role back automatically
-    const role = (userId && userId === existingRoom.ownerId) ? 'operator' : 'viewer';
-
-    const result = joinRoom(code, socket.id, name, role, userId);
-    if ('error' in result) { socket.emit('error', result.error); return; }
-
-    registerSocket(socket.id, code);
-    socket.join(code);
-    socket.emit('room:joined', { room: existingRoom, user: result });
-    io.to(code).emit('room:users', getRoomUsers(code));
   });
 
   // ── Role change — operator only; target must be a registered user ─────────
   socket.on('room:setRole', ({ targetSocketId, role }) => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const users     = getRoomUsers(code);
-    const requester = users.find(u => u.id === socket.id);
-    if (requester?.role !== 'operator') {
-      socket.emit('error', 'Only operators can change roles');
-      return;
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const users     = getRoomUsers(code);
+      const requester = users.find(u => u.id === socket.id);
+      if (requester?.role !== 'operator') {
+        socket.emit('error', 'Only operators can change roles');
+        return;
+      }
+      const target = users.find(u => u.id === targetSocketId);
+      if (role === 'operator' && !target?.userId) {
+        socket.emit('error', 'Only registered users can be made operators');
+        return;
+      }
+      const updated = updateUserRole(code, targetSocketId, role);
+      if (!updated) return;
+      io.to(targetSocketId).emit('room:roleChanged', updated);
+      io.to(code).emit('room:users', getRoomUsers(code));
+    } catch (err) {
+      console.error('[socket:room:setRole]', err);
     }
-    const target = users.find(u => u.id === targetSocketId);
-    if (role === 'operator' && !target?.userId) {
-      socket.emit('error', 'Only registered users can be made operators');
-      return;
-    }
-    const updated = updateUserRole(code, targetSocketId, role);
-    if (!updated) return;
-    io.to(targetSocketId).emit('room:roleChanged', updated);
-    io.to(code).emit('room:users', getRoomUsers(code));
   });
 
   // ── Schedule set (full replace) ──────────────────────────────────────────
   socket.on('schedule:set', (schedule) => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = setSchedule(code, schedule);
-    if (!room) return;
-    io.to(code).emit('schedule:update', room.schedule);
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = setSchedule(code, schedule);
+      if (!room) return;
+      io.to(code).emit('schedule:update', room.schedule);
+    } catch (err) {
+      console.error('[socket:schedule:set]', err);
+    }
   });
 
   // ── Schedule item update ─────────────────────────────────────────────────
   socket.on('schedule:updateItem', ({ id, changes }) => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = getRoom(code);
-    if (!room) return;
-    const schedule = room.schedule.map(item =>
-      item.id === id ? { ...item, ...changes } : item
-    );
-    const recalced = recalculate(schedule, Date.now());
-    const updated = updateRoom(code, { schedule: recalced });
-    if (updated) io.to(code).emit('schedule:update', updated.schedule);
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = getRoom(code);
+      if (!room) return;
+      const schedule = room.schedule.map(item =>
+        item.id === id ? { ...item, ...changes } : item
+      );
+      const recalced = recalculate(schedule, Date.now());
+      const updated  = updateRoom(code, { schedule: recalced });
+      if (updated) io.to(code).emit('schedule:update', updated.schedule);
+    } catch (err) {
+      console.error('[socket:schedule:updateItem]', err);
+    }
   });
 
   // ── Advance to next item ─────────────────────────────────────────────────
   socket.on('item:advance', () => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = getRoom(code);
-    if (!room) return;
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = getRoom(code);
+      if (!room) return;
 
-    const now = Date.now();
-    const currentItem = room.schedule[room.currentIndex];
-    if (!currentItem) return;
+      const now         = Date.now();
+      const currentItem = room.schedule[room.currentIndex];
+      if (!currentItem) return;
 
-    // Mark current done, start next
-    const newIndex = Math.min(room.currentIndex + 1, room.schedule.length - 1);
-    const schedule = room.schedule.map((item, i) => {
-      if (i === room.currentIndex) {
-        return { ...item, status: 'done' as const, actualEnd: now };
+      const newIndex = Math.min(room.currentIndex + 1, room.schedule.length - 1);
+      const schedule = room.schedule.map((item, i) => {
+        if (i === room.currentIndex) {
+          return { ...item, status: 'done' as const, actualEnd: now };
+        }
+        if (i === newIndex && room.currentIndex !== newIndex) {
+          return { ...item, status: 'active' as const, actualStart: now };
+        }
+        return item;
+      });
+      const recalced = recalculate(schedule, now);
+      const updated  = updateRoom(code, { schedule: recalced, currentIndex: newIndex });
+      if (updated) {
+        io.to(code).emit('schedule:update', updated.schedule);
+        io.to(code).emit('item:advance', { currentIndex: newIndex, actualEnd: now });
       }
-      if (i === newIndex && room.currentIndex !== newIndex) {
-        return { ...item, status: 'active' as const, actualStart: now };
-      }
-      return item;
-    });
-    const recalced = recalculate(schedule, now);
-    const updated = updateRoom(code, { schedule: recalced, currentIndex: newIndex });
-    if (updated) {
-      io.to(code).emit('schedule:update', updated.schedule);
-      io.to(code).emit('item:advance', { currentIndex: newIndex, actualEnd: now });
+    } catch (err) {
+      console.error('[socket:item:advance]', err);
     }
   });
 
   // ── Mark item started ────────────────────────────────────────────────────
   socket.on('item:start', ({ id, actualStart }) => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = getRoom(code);
-    if (!room) return;
-    const idx = room.schedule.findIndex(i => i.id === id);
-    if (idx === -1) return;
-    const schedule = room.schedule.map((item, i) =>
-      i === idx ? { ...item, status: 'active' as const, actualStart } : item
-    );
-    const recalced = recalculate(schedule, actualStart);
-    const updated = updateRoom(code, { schedule: recalced, currentIndex: idx });
-    if (updated) io.to(code).emit('schedule:update', updated.schedule);
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = getRoom(code);
+      if (!room) return;
+      const idx = room.schedule.findIndex(i => i.id === id);
+      if (idx === -1) return;
+      const schedule = room.schedule.map((item, i) =>
+        i === idx ? { ...item, status: 'active' as const, actualStart } : item
+      );
+      const recalced = recalculate(schedule, actualStart);
+      const updated  = updateRoom(code, { schedule: recalced, currentIndex: idx });
+      if (updated) io.to(code).emit('schedule:update', updated.schedule);
+    } catch (err) {
+      console.error('[socket:item:start]', err);
+    }
   });
 
   // ── Mark item done ───────────────────────────────────────────────────────
   socket.on('item:done', ({ id, actualEnd }) => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = getRoom(code);
-    if (!room) return;
-    const schedule = room.schedule.map(item =>
-      item.id === id ? { ...item, status: 'done' as const, actualEnd } : item
-    );
-    const recalced = recalculate(schedule, actualEnd);
-    const updated = updateRoom(code, { schedule: recalced });
-    if (updated) io.to(code).emit('schedule:update', updated.schedule);
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = getRoom(code);
+      if (!room) return;
+      const schedule = room.schedule.map(item =>
+        item.id === id ? { ...item, status: 'done' as const, actualEnd } : item
+      );
+      const recalced = recalculate(schedule, actualEnd);
+      const updated  = updateRoom(code, { schedule: recalced });
+      if (updated) io.to(code).emit('schedule:update', updated.schedule);
+    } catch (err) {
+      console.error('[socket:item:done]', err);
+    }
   });
 
   // ── Revert to previous item ─────────────────────────────────────────────
   socket.on('item:revert', () => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = getRoom(code);
-    if (!room) return;
+    try {
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = getRoom(code);
+      if (!room) return;
 
-    const now = Date.now();
-    const prevIndex = Math.max(room.currentIndex - 1, 0);
+      const now       = Date.now();
+      const prevIndex = Math.max(room.currentIndex - 1, 0);
 
-    const schedule = room.schedule.map((item, i) => {
-      if (i === room.currentIndex) {
-        return { ...item, status: 'not_started' as const, actualStart: undefined, actualEnd: undefined };
+      const schedule = room.schedule.map((item, i) => {
+        if (i === room.currentIndex) {
+          return { ...item, status: 'not_started' as const, actualStart: undefined, actualEnd: undefined };
+        }
+        if (i === prevIndex && prevIndex < room.currentIndex) {
+          return { ...item, status: 'active' as const, actualEnd: undefined };
+        }
+        return item;
+      });
+
+      const recalced = recalculate(schedule, now);
+      const updated  = updateRoom(code, { schedule: recalced, currentIndex: prevIndex });
+      if (updated) {
+        io.to(code).emit('schedule:update', updated.schedule);
+        io.to(code).emit('item:revert', { currentIndex: prevIndex });
       }
-      if (i === prevIndex && prevIndex < room.currentIndex) {
-        return { ...item, status: 'active' as const, actualEnd: undefined };
-      }
-      return item;
-    });
-
-    const recalced = recalculate(schedule, now);
-    const updated = updateRoom(code, { schedule: recalced, currentIndex: prevIndex });
-    if (updated) {
-      io.to(code).emit('schedule:update', updated.schedule);
-      io.to(code).emit('item:revert', { currentIndex: prevIndex });
+    } catch (err) {
+      console.error('[socket:item:revert]', err);
     }
   });
 
-  // ── Announcement ─────────────────────────────────────────────────────────
+  // ── Announcement — rate limited + HTML stripped ──────────────────────────
   socket.on('announcement:send', ({ text }) => {
-    const code = getRoomForSocket(socket.id);
-    if (!code) return;
-    const room = getRoom(code);
-    if (!room) return;
-    const users = getRoomUsers(code);
-    const sender = users.find(u => u.id === socket.id);
-    const ann = addAnnouncement(code, text, sender?.name ?? 'Unknown');
-    io.to(code).emit('announcement', ann);
+    try {
+      if (!socketAllow(socket.id, 5, 10_000)) {
+        socket.emit('error', 'Too many announcements. Please slow down.');
+        return;
+      }
+      const code = getRoomForSocket(socket.id);
+      if (!code) return;
+      const room = getRoom(code);
+      if (!room) return;
+      const users     = getRoomUsers(code);
+      const sender    = users.find(u => u.id === socket.id);
+      const sanitized = String(text ?? '').replace(/<[^>]*>/g, '').slice(0, 280);
+      const ann       = addAnnouncement(code, sanitized, sender?.name ?? 'Unknown');
+      io.to(code).emit('announcement', ann);
+    } catch (err) {
+      console.error('[socket:announcement:send]', err);
+    }
   });
 
   // ── Disconnect ───────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
+    socketEventCounts.delete(socket.id);
     const code = unregisterSocket(socket.id);
     if (code) {
       leaveRoom(code, socket.id);
@@ -337,7 +421,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const client = createOAuthClient();
     const { tokens } = await client.getToken(code);
     req.session.googleTokens = {
-      access_token: tokens.access_token ?? null,
+      access_token:  tokens.access_token  ?? null,
       refresh_token: tokens.refresh_token ?? null,
     };
     res.redirect(`${CLIENT_URL}?auth=success`);
@@ -448,7 +532,6 @@ app.post('/api/billing/sync', async (req, res) => {
   }
 });
 
-
 app.post('/api/billing/portal', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
@@ -519,78 +602,6 @@ app.post('/api/sheets/write', async (req, res) => {
   }
 });
 
-// ─── RevenueCat webhook ───────────────────────────────────────────────────────
-//
-// Setup in RC Dashboard → Integrations → Webhooks → Add endpoint:
-//   URL:    https://your-domain.com/webhooks/revenuecat
-//   Header: Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>
-//
-// Event types that change the plan:
-//   INITIAL_PURCHASE / RENEWAL / PRODUCT_CHANGE → activate plan
-//   EXPIRATION / BILLING_ISSUE                  → revert to free
-
-type RCEventType =
-  | 'INITIAL_PURCHASE' | 'RENEWAL' | 'PRODUCT_CHANGE' | 'SUBSCRIBER_ALIAS'
-  | 'CANCELLATION' | 'EXPIRATION' | 'BILLING_ISSUE' | 'TRANSFER';
-
-interface RCWebhookPayload {
-  api_version: string;
-  event: {
-    type: RCEventType;
-    app_user_id: string;
-    aliases?: string[];
-    entitlement_ids?: string[];
-  };
-}
-
-const ACTIVATE_EVENTS: RCEventType[] = ['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE'];
-const EXPIRE_EVENTS:   RCEventType[] = ['EXPIRATION', 'BILLING_ISSUE'];
-
-function entitlementsToPlan(ids: string[]): import('@program-timer/shared').Plan {
-  if (ids.includes('studio')) return 'premium2';
-  if (ids.includes('pro'))    return 'premium1';
-  return 'free';
-}
-
-app.post('/webhooks/revenuecat', async (req, res) => {
-  // Verify the shared secret (set REVENUECAT_WEBHOOK_SECRET in server/.env)
-  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
-  if (secret) {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${secret}`) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-  }
-
-  const payload = req.body as RCWebhookPayload;
-  const event   = payload?.event;
-  if (!event?.app_user_id) { res.json({ ok: true }); return; }
-
-  const userId = event.app_user_id;
-
-  // Import lazily to avoid circular deps
-  const { createClient } = await import('@supabase/supabase-js');
-  const supabaseUrl = process.env.SUPABASE_URL ?? '';
-  const supabaseKey = process.env.SUPABASE_SECRET_KEY ?? '';
-  if (!supabaseUrl || !supabaseKey) { res.json({ ok: true }); return; }
-
-  const admin = createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  if (ACTIVATE_EVENTS.includes(event.type)) {
-    const plan = entitlementsToPlan(event.entitlement_ids ?? []);
-    await admin.from('profiles').update({ plan }).eq('id', userId);
-    console.log(`[rc webhook] ${event.type} → user ${userId} → plan ${plan}`);
-  } else if (EXPIRE_EVENTS.includes(event.type)) {
-    await admin.from('profiles').update({ plan: 'free' }).eq('id', userId);
-    console.log(`[rc webhook] ${event.type} → user ${userId} → plan free`);
-  }
-
-  res.json({ ok: true });
-});
-
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -608,11 +619,21 @@ setInterval(() => {
   if (expired.length > 0) {
     console.log(`[cleanup] Expired ${expired.length} room(s): ${expired.join(', ')}`);
   }
-}, 60 * 60 * 1000); // check every hour
+}, 60 * 60 * 1000);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 server.listen(PORT, () => {
   console.log(`Program Timer server running on http://localhost:${PORT}`);
+});
+
+// ─── Global error guards — prevent silent crashes ────────────────────────────
+
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
 });
