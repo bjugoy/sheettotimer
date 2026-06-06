@@ -101,12 +101,10 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
     await updatePlanByStripeCustomerId(sub.customer as string, 'free');
   }
 
-  // Downgrade on failed payment
+  // invoice.payment_failed — Stripe will retry automatically via Smart Retries/dunning.
+  // The actual downgrade happens via customer.subscription.deleted once all retries are exhausted.
   if (event.type === 'invoice.payment_failed') {
-    const inv = event.data.object;
-    if (inv.customer) {
-      await updatePlanByStripeCustomerId(inv.customer as string, 'free');
-    }
+    console.log('[stripe] invoice.payment_failed for customer:', (event.data.object as { customer?: string }).customer);
   }
 
   res.json({ received: true });
