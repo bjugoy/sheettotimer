@@ -5,9 +5,6 @@ Sentry.init({
   environment: import.meta.env.MODE,
   integrations: [
     Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration(),
   ],
-  tracesSampleRate:          1.0,
-  replaysSessionSampleRate:  0.1,  // capture 10% of sessions
-  replaysOnErrorSampleRate:  1.0,  // capture 100% of sessions that had an error
+  tracesSampleRate: 1.0,
 });

@@ -3,4 +3,4 @@ Allow: /
 Disallow: /dashboard
 Disallow: /app
 
-Sitemap: https://sheettotimer.vercel.app/sitemap.xml
+Sitemap: https://sheettotimer.com/sitemap.xml
