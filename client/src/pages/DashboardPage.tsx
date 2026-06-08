@@ -137,16 +137,16 @@ export function DashboardPage() {
       <header className="shrink-0 border-b border-warm-800/40 bg-warm-900/60">
         <div className="flex items-center justify-between px-6 h-12">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)}
-              className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Back
-            </button>
-            <span className="text-warm-800">·</span>
             <div className="flex items-center gap-1.5">
               <Radio className="w-3.5 h-3.5 text-crimson-400" />
               <span className="text-sm font-bold text-warm-200">SheetToTimer</span>
             </div>
+            <span className="text-warm-800">·</span>
+            <button onClick={() => navigate('/landing')}
+              className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Home
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
