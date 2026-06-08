@@ -190,9 +190,13 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between text-[11px] text-warm-500">
           <div className="flex items-center gap-1.5">
             <Radio className="w-3.5 h-3.5 text-crimson-600" />
-            <span>SheetToTimer</span>
+            <span>© {new Date().getFullYear()} Notwey</span>
           </div>
-          <span>Real-time show management</span>
+          <div className="flex items-center gap-4">
+            <a href="/privacy" className="hover:text-warm-300 transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-warm-300 transition-colors">Terms of Service</a>
+            <a href="mailto:support@notwey.com" className="hover:text-warm-300 transition-colors">support@notwey.com</a>
+          </div>
         </div>
       </footer>
 

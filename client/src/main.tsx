@@ -7,6 +7,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { useAuthStore } from './store/authStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
 import './index.css';
@@ -54,6 +56,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/landing"   element={<LandingPage />} />
           <Route path="/app"       element={<App />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/privacy"    element={<PrivacyPolicyPage />} />
+          <Route path="/terms"      element={<TermsOfServicePage />} />
           <Route path="*"          element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
