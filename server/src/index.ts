@@ -41,7 +41,7 @@ const isProd     = process.env.NODE_ENV === 'production';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
 
 if (isProd && !process.env.SESSION_SECRET) {
-  console.warn('[startup] WARNING: SESSION_SECRET is not set — sessions are insecure. Set this env var in production.');
+  throw new Error('[startup] SESSION_SECRET env var is required in production. Set it in your Heroku config vars.');
 }
 
 // Support comma-separated origins and automatically include www ↔ non-www variants
@@ -147,6 +147,15 @@ function socketAllow(socketId: string, limit: number, windowMs: number): boolean
   return true;
 }
 
+// Returns the room code if the socket is an operator in their room, null otherwise.
+function requireOperator(socketId: string): string | null {
+  const code = getRoomForSocket(socketId);
+  if (!code) return null;
+  const user = getRoomUsers(code).find(u => u.id === socketId);
+  if (user?.role !== 'operator') return null;
+  return code;
+}
+
 io.on('connection', (socket) => {
   // ── Room create (requires premium auth token) ────────────────────────────
   socket.on('room:create', async ({ name, authToken }) => {
@@ -235,8 +244,8 @@ io.on('connection', (socket) => {
   // ── Schedule set (full replace) ──────────────────────────────────────────
   socket.on('schedule:set', (schedule) => {
     try {
-      const code = getRoomForSocket(socket.id);
-      if (!code) return;
+      const code = requireOperator(socket.id);
+      if (!code) { socket.emit('error', 'Only operators can modify the schedule'); return; }
       const room = setSchedule(code, schedule);
       if (!room) return;
       io.to(code).emit('schedule:update', room.schedule);
@@ -248,8 +257,8 @@ io.on('connection', (socket) => {
   // ── Schedule item update ─────────────────────────────────────────────────
   socket.on('schedule:updateItem', ({ id, changes }) => {
     try {
-      const code = getRoomForSocket(socket.id);
-      if (!code) return;
+      const code = requireOperator(socket.id);
+      if (!code) { socket.emit('error', 'Only operators can modify the schedule'); return; }
       const room = getRoom(code);
       if (!room) return;
       const schedule = room.schedule.map(item =>
@@ -266,8 +275,8 @@ io.on('connection', (socket) => {
   // ── Advance to next item ─────────────────────────────────────────────────
   socket.on('item:advance', () => {
     try {
-      const code = getRoomForSocket(socket.id);
-      if (!code) return;
+      const code = requireOperator(socket.id);
+      if (!code) { socket.emit('error', 'Only operators can advance items'); return; }
       const room = getRoom(code);
       if (!room) return;
 
@@ -299,8 +308,8 @@ io.on('connection', (socket) => {
   // ── Mark item started ────────────────────────────────────────────────────
   socket.on('item:start', ({ id, actualStart }) => {
     try {
-      const code = getRoomForSocket(socket.id);
-      if (!code) return;
+      const code = requireOperator(socket.id);
+      if (!code) { socket.emit('error', 'Only operators can control the timer'); return; }
       const room = getRoom(code);
       if (!room) return;
       const idx = room.schedule.findIndex(i => i.id === id);
@@ -319,8 +328,8 @@ io.on('connection', (socket) => {
   // ── Mark item done ───────────────────────────────────────────────────────
   socket.on('item:done', ({ id, actualEnd }) => {
     try {
-      const code = getRoomForSocket(socket.id);
-      if (!code) return;
+      const code = requireOperator(socket.id);
+      if (!code) { socket.emit('error', 'Only operators can control the timer'); return; }
       const room = getRoom(code);
       if (!room) return;
       const schedule = room.schedule.map(item =>
@@ -337,8 +346,8 @@ io.on('connection', (socket) => {
   // ── Revert to previous item ─────────────────────────────────────────────
   socket.on('item:revert', () => {
     try {
-      const code = getRoomForSocket(socket.id);
-      if (!code) return;
+      const code = requireOperator(socket.id);
+      if (!code) { socket.emit('error', 'Only operators can control the timer'); return; }
       const room = getRoom(code);
       if (!room) return;
 
@@ -488,6 +497,10 @@ app.post('/api/billing/checkout', async (req, res) => {
       await setStripeCustomerId(verified.userId, customerId);
     }
 
+    // 5-minute window key: same user+plan+interval within 5 min reuses the session
+    const windowKey = Math.floor(Date.now() / (5 * 60 * 1000));
+    const idempotencyKey = `checkout-${verified.userId}-${plan}-${interval}-${windowKey}`;
+
     const session = await stripe.checkout.sessions.create({
       customer:              customerId,
       mode:                  'subscription',
@@ -495,12 +508,12 @@ app.post('/api/billing/checkout', async (req, res) => {
       success_url:           `${CLIENT_URL}/?billing=success`,
       cancel_url:            `${CLIENT_URL}/`,
       allow_promotion_codes: true,
-    });
+    }, { idempotencyKey });
 
     res.json({ url: session.url });
   } catch (err) {
     console.error('[billing/checkout]', err);
-    res.status(500).json({ error: err instanceof Error ? err.message : 'Checkout failed' });
+    res.status(500).json({ error: 'Checkout failed. Please try again.' });
   }
 });
 
@@ -542,7 +555,7 @@ app.post('/api/billing/sync', async (req, res) => {
     res.json({ plan });
   } catch (err) {
     console.error('[billing/sync]', err);
-    res.status(500).json({ error: err instanceof Error ? err.message : 'Sync failed' });
+    res.status(500).json({ error: 'Sync failed. Please try again.' });
   }
 });
 
@@ -577,7 +590,7 @@ app.post('/api/billing/portal', async (req, res) => {
     res.json({ url: session.url });
   } catch (err) {
     console.error('[billing/portal]', err);
-    res.status(500).json({ error: err instanceof Error ? err.message : 'Portal failed' });
+    res.status(500).json({ error: 'Could not open billing portal. Please try again.' });
   }
 });
 
@@ -598,8 +611,8 @@ app.post('/api/sheets/fetch', async (req, res) => {
     const data = await fetchSheetData(accessToken, spreadsheetId, range);
     res.json(data);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    res.status(500).json({ error: msg });
+    console.error('[sheets/fetch]', e);
+    res.status(500).json({ error: 'Failed to fetch sheet data. Check your Google Sheets connection.' });
   }
 });
 
@@ -624,8 +637,8 @@ app.post('/api/sheets/write', async (req, res) => {
     await writeSheetData(accessToken, spreadsheetId, range, values);
     res.json({ ok: true });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    res.status(500).json({ error: msg });
+    console.error('[sheets/write]', e);
+    res.status(500).json({ error: 'Failed to write to sheet. Check your Google Sheets connection.' });
   }
 });
 
@@ -648,6 +661,10 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+// ─── 404 catch-all ───────────────────────────────────────────────────────────
+
+app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
+
 // ─── Sentry Express error handler — must be after all routes ─────────────────
 
 Sentry.setupExpressErrorHandler(app);
@@ -663,6 +680,7 @@ server.listen(PORT, () => {
 
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
