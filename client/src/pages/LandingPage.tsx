@@ -112,7 +112,6 @@ export function LandingPage() {
             </button>
           </div>
           <div className="flex items-center gap-6 mt-8 text-warm-400 text-xs">
-            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-400" /> No credit card</span>
             <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-400" /> Works with Excel & Google Sheets</span>
             <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-moss-400" /> Setup in 60 seconds</span>
           </div>
@@ -120,14 +119,8 @@ export function LandingPage() {
 
         {/* Right: live demo */}
         <div className="flex-shrink-0 flex flex-col items-center gap-3">
-          <div className="flex items-center gap-1.5 text-[10px] text-warm-500 uppercase tracking-widest mb-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-crimson-500 animate-pulse" />
-            Live demo
-          </div>
+          <p className="text-[10px] text-warm-500 uppercase tracking-widest mb-1">Try out the timer</p>
           <MiniTimerDemo />
-          <p className="text-[11px] text-warm-400 text-center max-w-[280px]">
-            This is a live preview — the timer is actually running.
-          </p>
         </div>
       </section>
 
