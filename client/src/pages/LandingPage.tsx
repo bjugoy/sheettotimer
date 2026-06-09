@@ -10,8 +10,8 @@ const PLANS = [
   {
     id: 'free',
     name: 'Free',
-    price: '€0',
-    period: '',
+    monthly: { price: '€0', period: '' },
+    yearly:  { price: '€0', period: '', savings: '' },
     color: 'border-warm-700/50',
     badge: '',
     features: ['Upload & run timer', 'Save productions & events', 'Schedule editor', 'Unlimited schedule rows'],
@@ -21,8 +21,8 @@ const PLANS = [
   {
     id: 'premium1',
     name: 'Pro',
-    price: '€4.99',
-    period: '/mo',
+    monthly: { price: '€4.99', period: '/mo' },
+    yearly:  { price: '€24.99', period: '/yr', savings: 'Save 58%' },
     color: 'border-amber-700/50',
     badge: 'text-amber-300',
     features: ['Everything in Free', 'Connect Google Sheets', 'Room for 5 devices', 'Presenter screen'],
@@ -32,21 +32,22 @@ const PLANS = [
   {
     id: 'premium2',
     name: 'Studio',
-    price: '€6.99',
-    period: '/mo',
+    monthly: { price: '€6.99', period: '/mo' },
+    yearly:  { price: '€35.99', period: '/yr', savings: 'Save 57%' },
     color: 'border-crimson-700/50',
     badge: 'text-crimson-300',
     features: ['Everything in Pro', 'Room for 15 devices', 'Custom schedule columns'],
     cta: 'Get started',
     ctaCls: 'bg-crimson-800/60 hover:bg-crimson-700/60 text-crimson-100 border border-crimson-700/60',
   },
-] as const;
+];
 
 export function LandingPage() {
   const navigate   = useNavigate();
   const user       = useAuthStore(s => s.user);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   const openSignUp = () => { setAuthMode('signup'); setShowAuth(true); };
   const openSignIn = () => { setAuthMode('signin'); setShowAuth(true); };
@@ -146,18 +147,43 @@ export function LandingPage() {
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-warm-100 mb-2">Simple pricing</h2>
           <p className="text-warm-400">Start free. Upgrade when you need rooms and collaboration.</p>
+          {/* Billing interval toggle */}
+          <div className="inline-flex mt-6 rounded-lg border border-warm-700/50 overflow-hidden text-sm">
+            <button
+              onClick={() => setBillingInterval('monthly')}
+              className={cn('px-5 py-2 transition-colors',
+                billingInterval === 'monthly' ? 'bg-warm-700 text-warm-100' : 'text-warm-500 hover:text-warm-300')}>
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingInterval('yearly')}
+              className={cn('px-5 py-2 flex items-center gap-2 transition-colors',
+                billingInterval === 'yearly' ? 'bg-warm-700 text-warm-100' : 'text-warm-500 hover:text-warm-300')}>
+              Yearly
+              <span className="text-[11px] text-moss-400 font-medium">Save up to 58%</span>
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          {PLANS.map(plan => (
+          {PLANS.map(plan => {
+            const pricing = billingInterval === 'yearly' ? plan.yearly : plan.monthly;
+            return (
             <div key={plan.id}
               className={cn('bg-warm-900/60 border rounded-xl p-6 flex flex-col', plan.color)}>
               <div className="mb-4">
-                <span className={cn('text-xs font-bold uppercase tracking-wider', plan.badge || 'text-warm-500')}>
-                  {plan.name}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className={cn('text-xs font-bold uppercase tracking-wider', plan.badge || 'text-warm-500')}>
+                    {plan.name}
+                  </span>
+                  {billingInterval === 'yearly' && plan.yearly.savings && (
+                    <span className="text-[10px] text-moss-400 font-semibold bg-moss-900/30 border border-moss-700/40 px-2 py-0.5 rounded-full">
+                      {plan.yearly.savings}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-1 flex items-baseline gap-0.5">
-                  <span className="text-3xl font-bold text-warm-100">{plan.price}</span>
-                  <span className="text-warm-400 text-sm">{plan.period}</span>
+                  <span className="text-3xl font-bold text-warm-100">{pricing.price}</span>
+                  <span className="text-warm-400 text-sm">{pricing.period}</span>
                 </div>
               </div>
               <ul className="space-y-2 flex-1 mb-6">
@@ -174,7 +200,8 @@ export function LandingPage() {
                 {plan.cta}
               </button>
             </div>
-          ))}
+          );
+          })}
         </div>
       </section>
 

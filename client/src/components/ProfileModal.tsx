@@ -50,6 +50,7 @@ export function ProfileModal({ onClose }: Props) {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [billingLoading, setBillingLoading] = useState<'pro' | 'studio' | 'portal' | null>(null);
   const [billingError, setBillingError]     = useState('');
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   const planFeatures = getPlanFeatures(plan);
   const badgeCls     = PLAN_BADGE_COLOR[plan];
@@ -104,7 +105,7 @@ export function ProfileModal({ onClose }: Props) {
     setBillingError('');
     setBillingLoading(targetPlan === 'premium1' ? 'pro' : 'studio');
     try {
-      await startCheckout(targetPlan, token);
+      await startCheckout(targetPlan, token, billingInterval);
     } catch (e) {
       setBillingError(e instanceof Error ? e.message : 'Something went wrong');
       setBillingLoading(null);
@@ -222,6 +223,22 @@ export function ProfileModal({ onClose }: Props) {
 
             {plan === 'free' ? (
               <div className="space-y-1.5 pt-0.5">
+                {/* Billing interval toggle */}
+                <div className="flex rounded-lg border border-warm-700/50 overflow-hidden text-[11px] mb-2">
+                  <button
+                    onClick={() => setBillingInterval('monthly')}
+                    className={cn('flex-1 py-1.5 transition-colors',
+                      billingInterval === 'monthly' ? 'bg-warm-700 text-warm-100' : 'text-warm-500 hover:text-warm-300')}>
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setBillingInterval('yearly')}
+                    className={cn('flex-1 py-1.5 flex items-center justify-center gap-1.5 transition-colors',
+                      billingInterval === 'yearly' ? 'bg-warm-700 text-warm-100' : 'text-warm-500 hover:text-warm-300')}>
+                    Yearly
+                    <span className="text-moss-400 font-medium">Save 58%</span>
+                  </button>
+                </div>
                 <button
                   onClick={() => handleUpgrade('premium1')}
                   disabled={!!billingLoading}
@@ -234,7 +251,9 @@ export function ProfileModal({ onClose }: Props) {
                       : <Check className="w-3.5 h-3.5 text-amber-300" />}
                     <span className="text-xs font-medium text-amber-200">Pro</span>
                   </div>
-                  <span className="text-[11px] text-amber-400">€4.99 / mo</span>
+                  <span className="text-[11px] text-amber-400">
+                    {billingInterval === 'monthly' ? '€4.99 / mo' : '€24.99 / yr'}
+                  </span>
                 </button>
                 <button
                   onClick={() => handleUpgrade('premium2')}
@@ -248,7 +267,9 @@ export function ProfileModal({ onClose }: Props) {
                       : <Check className="w-3.5 h-3.5 text-crimson-300" />}
                     <span className="text-xs font-medium text-crimson-200">Studio</span>
                   </div>
-                  <span className="text-[11px] text-crimson-400">€6.99 / mo</span>
+                  <span className="text-[11px] text-crimson-400">
+                    {billingInterval === 'monthly' ? '€6.99 / mo' : '€35.99 / yr'}
+                  </span>
                 </button>
               </div>
             ) : (

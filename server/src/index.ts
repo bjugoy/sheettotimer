@@ -471,8 +471,9 @@ app.post('/api/billing/checkout', async (req, res) => {
   const verified = await verifyToken(token);
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
-  const { plan } = req.body as { plan: 'premium1' | 'premium2' };
-  const priceId  = PRICE_IDS[plan];
+  const { plan, interval = 'monthly' } = req.body as { plan: 'premium1' | 'premium2'; interval?: 'monthly' | 'yearly' };
+  if (interval !== 'monthly' && interval !== 'yearly') { res.status(400).json({ error: 'Invalid interval' }); return; }
+  const priceId = PRICE_IDS[plan]?.[interval];
   if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
   try {
