@@ -15,9 +15,9 @@ export const PLANS: Record<Plan, PlanFeatures> = {
   free: {
     label: 'Free',
     canCreateRoom:       false,
-    canUseEditor:        false,
+    canUseEditor:        true,
     canUsePresenter:     false,
-    canSaveEvents:       false,
+    canSaveEvents:       true,
     canUseGoogleSheets:  false,
     canUseCustomColumns: false,
     roomCapacity:        0,

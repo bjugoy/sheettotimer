@@ -12,8 +12,8 @@ interface Props {
 }
 
 const PLAN_DESCRIPTION = {
-  free:     'Upload & timer view only',
-  premium1: 'Google Sheets · Editor · Room for 5 · Presenter',
+  free:     'Upload · Save events · Editor',
+  premium1: 'Google Sheets · Room for 5 · Presenter',
   premium2: 'Google Sheets · Editor · Room for 15 · Presenter · Custom columns',
 } as const;
 
