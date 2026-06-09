@@ -116,7 +116,7 @@ function PrivacyEN() {
           </div>
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
             <p className="font-medium text-warm-300">Google (Alphabet Inc., USA)</p>
-            <p>Used only when you explicitly connect your Google account to access Google Sheets. We access your spreadsheet data on your behalf using OAuth tokens. We do not store your Google credentials. OAuth tokens are used only for the duration of your session and discarded when you disconnect.</p>
+            <p>Used only when you explicitly connect your Google account to access Google Sheets. We access your spreadsheet data on your behalf using OAuth tokens. We do not store your Google credentials. OAuth tokens are stored in an HTTP-only session cookie for up to 24 hours and are automatically deleted when you sign out or your session expires.</p>
           </div>
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
             <p className="font-medium text-warm-300">Sentry (Functional Software Inc., USA)</p>
@@ -239,7 +239,7 @@ function PrivacyDE() {
           </div>
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
             <p className="font-medium text-warm-300">Google (Alphabet Inc., USA)</p>
-            <p>Wird nur verwendet, wenn Sie Ihr Google-Konto explizit verbinden, um auf Google Sheets zuzugreifen. Wir greifen per OAuth-Token in Ihrem Auftrag auf Ihre Tabelle zu. Wir speichern Ihre Google-Zugangsdaten nicht. OAuth-Token werden nur für die Dauer Ihrer Sitzung verwendet und danach verworfen.</p>
+            <p>Wird nur verwendet, wenn Sie Ihr Google-Konto explizit verbinden, um auf Google Sheets zuzugreifen. Wir greifen per OAuth-Token in Ihrem Auftrag auf Ihre Tabelle zu. Wir speichern Ihre Google-Zugangsdaten nicht. OAuth-Token werden in einem HTTP-only-Sitzungs-Cookie für bis zu 24 Stunden gespeichert und automatisch gelöscht, wenn Sie sich abmelden oder Ihre Sitzung abläuft.</p>
           </div>
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
             <p className="font-medium text-warm-300">Sentry (Functional Software Inc., USA)</p>
