@@ -511,7 +511,20 @@ app.post('/api/billing/sync', async (req, res) => {
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
   try {
-    const customerId = await getStripeCustomerId(verified.userId);
+    let customerId = await getStripeCustomerId(verified.userId);
+
+    // Fallback: look up by email and backfill if missing
+    if (!customerId) {
+      const email = await getUserEmail(verified.userId);
+      if (email) {
+        const customers = await stripe.customers.list({ email, limit: 1 });
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          await setStripeCustomerId(verified.userId, customerId);
+        }
+      }
+    }
+
     if (!customerId) { res.json({ plan: 'free' }); return; }
 
     const subscriptions = await stripe.subscriptions.list({
@@ -539,7 +552,20 @@ app.post('/api/billing/portal', async (req, res) => {
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
   try {
-    const customerId = await getStripeCustomerId(verified.userId);
+    let customerId = await getStripeCustomerId(verified.userId);
+
+    // Fallback: stripe_customer_id missing from profile — look up by email and backfill
+    if (!customerId) {
+      const email = await getUserEmail(verified.userId);
+      if (email) {
+        const customers = await stripe.customers.list({ email, limit: 1 });
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          await setStripeCustomerId(verified.userId, customerId);
+        }
+      }
+    }
+
     if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
 
     const session = await stripe.billingPortal.sessions.create({
