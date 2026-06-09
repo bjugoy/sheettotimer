@@ -234,7 +234,7 @@ export function ProfileModal({ onClose }: Props) {
                       : <Check className="w-3.5 h-3.5 text-amber-300" />}
                     <span className="text-xs font-medium text-amber-200">Pro</span>
                   </div>
-                  <span className="text-[11px] text-amber-400">$8.99 / mo</span>
+                  <span className="text-[11px] text-amber-400">€4.99 / mo</span>
                 </button>
                 <button
                   onClick={() => handleUpgrade('premium2')}
@@ -248,7 +248,7 @@ export function ProfileModal({ onClose }: Props) {
                       : <Check className="w-3.5 h-3.5 text-crimson-300" />}
                     <span className="text-xs font-medium text-crimson-200">Studio</span>
                   </div>
-                  <span className="text-[11px] text-crimson-400">$14.99 / mo</span>
+                  <span className="text-[11px] text-crimson-400">€6.99 / mo</span>
                 </button>
               </div>
             ) : (

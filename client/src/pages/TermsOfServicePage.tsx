@@ -68,7 +68,6 @@ function TermsEN() {
         </p>
         <p className="bg-warm-900/60 border border-warm-800/50 rounded-lg p-4 text-warm-300">
           Richard Libres, operating as <strong>Notwey</strong><br />
-          [ADDRESS — to be published upon business registration]<br />
           Austria<br />
           Email: <a href="mailto:support@notwey.com" className="text-amber-400 hover:underline">support@notwey.com</a>
         </p>
@@ -93,15 +92,15 @@ function TermsEN() {
         <p>SheetToTimer offers the following plans:</p>
         <div className="space-y-2">
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
-            <p className="font-medium text-warm-300">Free — $0/month</p>
+            <p className="font-medium text-warm-300">Free — €0/month</p>
             <p>Upload schedules, run the timer locally, unlimited schedule rows. No room sharing, no Google Sheets, no cloud saves.</p>
           </div>
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
-            <p className="font-medium text-warm-300">Pro — $8.99/month</p>
+            <p className="font-medium text-warm-300">Pro — €4.99/month</p>
             <p>Everything in Free plus: Google Sheets integration, schedule editor, presenter screen, room for up to 5 devices, save productions and events.</p>
           </div>
           <div className="bg-warm-900/40 border border-warm-800/40 rounded-lg p-3">
-            <p className="font-medium text-warm-300">Studio — $14.99/month</p>
+            <p className="font-medium text-warm-300">Studio — €6.99/month</p>
             <p>Everything in Pro plus: room for up to 15 devices, custom schedule columns.</p>
           </div>
         </div>
@@ -188,7 +187,6 @@ function TermsDE() {
         <p>SheetToTimer (sheettotimer.com) wird betrieben von:</p>
         <p className="bg-warm-900/60 border border-warm-800/50 rounded-lg p-4 text-warm-300">
           Richard Libres, handelnd als <strong>Notwey</strong><br />
-          [ADRESSE — wird nach Gewerbeanmeldung ergänzt]<br />
           Österreich<br />
           E-Mail: <a href="mailto:support@notwey.com" className="text-amber-400 hover:underline">support@notwey.com</a>
         </p>

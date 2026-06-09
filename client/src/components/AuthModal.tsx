@@ -213,8 +213,8 @@ export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
               <div className="pt-1 border-t border-warm-800/40">
                 <p className="text-[10px] text-warm-700 leading-relaxed">
                   <span className="text-warm-500">Free</span> — upload &amp; timer view ·{' '}
-                  <span className="text-amber-400">Pro $8.99</span> — sheets + rooms for 5 ·{' '}
-                  <span className="text-crimson-400">Studio $14.99</span> — rooms for 15 + custom columns
+                  <span className="text-amber-400">Pro €4.99</span> — sheets + rooms for 5 ·{' '}
+                  <span className="text-crimson-400">Studio €6.99</span> — rooms for 15 + custom columns
                 </p>
               </div>
             </>

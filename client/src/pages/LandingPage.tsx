@@ -10,7 +10,7 @@ const PLANS = [
   {
     id: 'free',
     name: 'Free',
-    price: '$0',
+    price: '€0',
     period: '',
     color: 'border-warm-700/50',
     badge: '',
@@ -21,7 +21,7 @@ const PLANS = [
   {
     id: 'premium1',
     name: 'Pro',
-    price: '$8.99',
+    price: '€4.99',
     period: '/mo',
     color: 'border-amber-700/50',
     badge: 'text-amber-300',
@@ -32,7 +32,7 @@ const PLANS = [
   {
     id: 'premium2',
     name: 'Studio',
-    price: '$14.99',
+    price: '€6.99',
     period: '/mo',
     color: 'border-crimson-700/50',
     badge: 'text-crimson-300',
