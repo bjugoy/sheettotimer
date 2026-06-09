@@ -68,12 +68,8 @@ function PrivacyEN() {
         </p>
         <p className="bg-warm-900/60 border border-warm-800/50 rounded-lg p-4 text-warm-300">
           Richard Libres, operating as <strong>Notwey</strong><br />
-          [ADDRESS — see note below]<br />
           Austria<br />
           Email: <a href="mailto:support@notwey.com" className="text-amber-400 hover:underline">support@notwey.com</a>
-        </p>
-        <p className="text-warm-600 text-xs italic">
-          Note: A verified business address will be published here once registered. Until then, contact us via email for any data-related requests.
         </p>
       </Section>
 
@@ -130,12 +126,13 @@ function PrivacyEN() {
       </Section>
 
       <Section title="6. Cookies & Local Storage">
-        <p>We use the following types of cookies and browser storage:</p>
+        <p>We use only strictly necessary cookies and browser storage. We do not use analytics, advertising, or any other non-essential tracking technologies.</p>
         <ul className="list-disc list-inside space-y-1 pl-2">
-          <li><strong className="text-warm-300">Strictly necessary:</strong> Session authentication cookies (Supabase), Stripe fraud-prevention cookies. These are required to operate the service and cannot be declined.</li>
-          <li><strong className="text-warm-300">Local storage:</strong> Your schedule state and session preferences are saved locally in your browser to provide a seamless experience across page refreshes.</li>
+          <li><strong className="text-warm-300">Authentication cookies (Supabase):</strong> Required to keep you signed in. Set by Supabase, our authentication provider.</li>
+          <li><strong className="text-warm-300">Payment cookies (Stripe):</strong> Fraud-prevention cookies set by Stripe when you access the billing portal or checkout. Required for secure payment processing. Stripe is a strictly necessary third-party service provider, not a tracking or advertising partner.</li>
+          <li><strong className="text-warm-300">Local storage:</strong> Your schedule state and session preferences are saved locally in your browser to provide a seamless experience across page refreshes. This data never leaves your device.</li>
         </ul>
-        <p>A cookie consent banner will be shown on your first visit to manage any non-essential cookies we may introduce in the future.</p>
+        <p>A cookie notice is shown on your first visit. Because all cookies are strictly necessary for the service to function, they cannot be declined without disabling the service itself.</p>
       </Section>
 
       <Section title="7. Data Retention">
@@ -194,12 +191,8 @@ function PrivacyDE() {
         <p>Verantwortlicher im Sinne der DSGVO für SheetToTimer (sheettotimer.com) ist:</p>
         <p className="bg-warm-900/60 border border-warm-800/50 rounded-lg p-4 text-warm-300">
           Richard Libres, handelnd als <strong>Notwey</strong><br />
-          [ADRESSE — wird nach Gewerbeanmeldung ergänzt]<br />
           Österreich<br />
           E-Mail: <a href="mailto:support@notwey.com" className="text-amber-400 hover:underline">support@notwey.com</a>
-        </p>
-        <p className="text-warm-600 text-xs italic">
-          Hinweis: Eine verifizierte Geschäftsadresse wird nach erfolgter Gewerbeanmeldung hier veröffentlicht. Bis dahin stehen wir per E-Mail für alle datenschutzrechtlichen Anfragen zur Verfügung.
         </p>
       </Section>
 
@@ -256,12 +249,13 @@ function PrivacyDE() {
       </Section>
 
       <Section title="6. Cookies & Lokaler Speicher">
-        <p>Wir verwenden folgende Arten von Cookies und Browser-Speicher:</p>
+        <p>Wir verwenden ausschließlich technisch notwendige Cookies und Browser-Speicher. Wir setzen keine Analyse-, Werbe- oder sonstigen nicht notwendigen Tracking-Technologien ein.</p>
         <ul className="list-disc list-inside space-y-1 pl-2">
-          <li><strong className="text-warm-300">Unbedingt erforderlich:</strong> Sitzungs-Authentifizierungscookies (Supabase), Stripe-Betrugsschutz-Cookies. Diese sind für den Betrieb des Dienstes erforderlich und können nicht abgelehnt werden.</li>
-          <li><strong className="text-warm-300">Lokaler Speicher:</strong> Ihr Zeitplanstatus und Ihre Sitzungseinstellungen werden lokal in Ihrem Browser gespeichert, um ein nahtloses Erlebnis über Seitenaktualisierungen hinweg zu gewährleisten.</li>
+          <li><strong className="text-warm-300">Authentifizierungs-Cookies (Supabase):</strong> Erforderlich, um Sie angemeldet zu halten. Gesetzt von Supabase, unserem Authentifizierungsanbieter.</li>
+          <li><strong className="text-warm-300">Zahlungs-Cookies (Stripe):</strong> Betrugsschutz-Cookies, die von Stripe beim Zugriff auf das Abrechnungsportal oder die Kaufabwicklung gesetzt werden. Erforderlich für die sichere Zahlungsabwicklung. Stripe ist ein technisch notwendiger Drittanbieter, kein Tracking- oder Werbepartner.</li>
+          <li><strong className="text-warm-300">Lokaler Speicher:</strong> Ihr Zeitplanstatus und Ihre Sitzungseinstellungen werden lokal in Ihrem Browser gespeichert, um ein nahtloses Erlebnis zu gewährleisten. Diese Daten verlassen Ihr Gerät nicht.</li>
         </ul>
-        <p>Bei Ihrem ersten Besuch wird ein Cookie-Zustimmungsbanner angezeigt, mit dem Sie nicht notwendige Cookies verwalten können, die wir in Zukunft einführen könnten.</p>
+        <p>Bei Ihrem ersten Besuch wird ein Cookie-Hinweis angezeigt. Da alle Cookies für den Betrieb des Dienstes technisch notwendig sind, können sie nicht abgelehnt werden, ohne den Dienst selbst zu deaktivieren.</p>
       </Section>
 
       <Section title="7. Datenspeicherung">

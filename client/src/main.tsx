@@ -11,6 +11,7 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { useAuthStore } from './store/authStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
+import { CookieBanner } from './components/CookieBanner';
 import './index.css';
 
 function UpdateBanner() {
@@ -51,6 +52,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <UpdateBanner />
+        <CookieBanner />
         <Routes>
           <Route path="/"          element={<RootRedirect />} />
           <Route path="/landing"   element={<LandingPage />} />
