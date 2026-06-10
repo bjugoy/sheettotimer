@@ -147,6 +147,23 @@ node server/dist/index.js
 
 ---
 
+## Before go-live checklist
+
+### Your action required
+
+- [ ] **Sign Supabase DPA** — the privacy policy states a Data Processing Agreement is in place, but it must actually be signed. Go to **app.supabase.com → your project → Settings → Legal**, or visit [supabase.com/legal/dpa](https://supabase.com/legal/dpa). Free on all plans.
+- [ ] **Social preview image** — add a 1200×630 px `og-image.png` to `client/public/`, then add `<meta property="og:image">` and `<meta name="twitter:image">` tags to `client/index.html`. Without this, link previews on Slack/Twitter/WhatsApp show no image.
+- [ ] **Supabase email templates** — paste the custom HTML templates into the Supabase Dashboard under **Authentication → Email Templates** for both *Confirm signup* and *Reset password*. The templates were designed to match the app's dark theme.
+- [ ] **Verify Stripe webhook events** — confirm the following events are enabled on your webhook endpoint in the Stripe Dashboard: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+
+### Planned code improvements (non-blocking)
+
+- [ ] **Socket input validation** — `schedule:set` and `schedule:updateItem` accept arbitrary data from the client with no schema check. Add basic type/shape validation before writing to the room store.
+- [ ] **Room:join rate limiting** — failed join attempts (wrong code) are not rate-limited per socket. Add a per-socket counter for join failures to slow brute-force guessing of room codes.
+- [ ] **Room persistence** — rooms are stored in-memory on the server. A Heroku dyno restart (which happens daily on Eco dynos) clears all active sessions. Persisting room state to Redis or Supabase would prevent mid-event data loss on restart.
+
+---
+
 ## Tech stack
 
 | Layer | Technology |
