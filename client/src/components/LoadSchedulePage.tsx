@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Radio, ArrowLeft } from 'lucide-react';
+import { cn } from '../utils/timeUtils';
 import { FileUploader } from './FileUploader';
 import { ColumnMapper } from './ColumnMapper';
 import { useFileParser } from '../hooks/useFileParser';
@@ -24,6 +25,7 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, canUseGoogleShe
     parseResult, error: parseError, loading,
     parseFile, parseFromData, reset,
     headerRowIdx, setHeaderRow, totalRows, rawPreview,
+    sheetNames, currentSheet, switchSheet,
   } = useFileParser();
   const plan                = useAuthStore(s => s.plan);
   const { canUseCustomColumns } = getPlanFeatures(plan);
@@ -75,6 +77,28 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, canUseGoogleShe
         <div className="bg-warm-900/70 border border-warm-800/60 rounded-xl p-6">
           {parseResult ? (
             <>
+              {/* Sheet picker — only when the workbook has more than one sheet */}
+              {sheetNames.length > 1 && (
+                <div className="flex items-center gap-2 flex-wrap mb-4 p-3
+                  bg-warm-800/30 border border-warm-700/40 rounded-lg">
+                  <span className="text-[10px] text-warm-500 uppercase tracking-wider shrink-0">
+                    Sheet:
+                  </span>
+                  {sheetNames.map(name => (
+                    <button
+                      key={name}
+                      onClick={() => switchSheet(name)}
+                      className={cn(
+                        'text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                        name === currentSheet
+                          ? 'bg-crimson-800/60 border-crimson-700/50 text-warm-100'
+                          : 'bg-warm-800/40 border-warm-700/40 text-warm-400 hover:text-warm-200 hover:border-warm-600/60',
+                      )}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className="text-xs text-warm-500 mb-4">
                 {parseResult.rows.length} rows detected — confirm column assignments
               </p>

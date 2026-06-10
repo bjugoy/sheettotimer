@@ -3,17 +3,18 @@ import * as XLSX from 'xlsx';
 import type { ParseResult, RawRow } from '@program-timer/shared';
 import { detectColumnMapping, detectHeaderRow } from '@program-timer/shared';
 
-// How many raw rows to surface for the row-picker preview
 const PREVIEW_ROWS = 20;
 
 export function useFileParser() {
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
-  const [error, setError]             = useState<string | null>(null);
-  const [loading, setLoading]         = useState(false);
-  const [headerRowIdx, setHeaderRowIdx] = useState(0);
+  const [parseResult, setParseResult]     = useState<ParseResult | null>(null);
+  const [error, setError]                 = useState<string | null>(null);
+  const [loading, setLoading]             = useState(false);
+  const [headerRowIdx, setHeaderRowIdx]   = useState(0);
+  const [sheetNames, setSheetNames]       = useState<string[]>([]);
+  const [currentSheet, setCurrentSheet]   = useState<string>('');
 
-  // Raw AOA stored so we can re-derive without re-reading the file
-  const aoaRef = useRef<(string | number | null)[][]>([]);
+  const aoaRef      = useRef<(string | number | null)[][]>([]);
+  const workbookRef = useRef<XLSX.WorkBook | null>(null);
 
   // ── derive headers + rows + mapping from a given header row index ──────────
   const deriveFromAoa = useCallback((
@@ -41,6 +42,38 @@ export function useFileParser() {
     setParseResult({ rows, suggestedMapping, headers, warnings });
   }, []);
 
+  // ── parse one sheet from an already-loaded workbook ───────────────────────
+  const parseSheet = useCallback((wb: XLSX.WorkBook, name: string) => {
+    const sheet = wb.Sheets[name];
+    if (!sheet) throw new Error(`Sheet "${name}" not found in workbook`);
+
+    const aoa: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: null,
+      raw: true,
+    });
+
+    if (aoa.length < 2) throw new Error('Sheet appears to be empty or has no data rows');
+
+    aoaRef.current = aoa;
+    const detected = detectHeaderRow(aoa);
+    setHeaderRowIdx(detected);
+    deriveFromAoa(aoa, detected);
+  }, [deriveFromAoa]);
+
+  // ── switch to a different sheet (after initial parse) ────────────────────
+  const switchSheet = useCallback((name: string) => {
+    const wb = workbookRef.current;
+    if (!wb) return;
+    setError(null);
+    setCurrentSheet(name);
+    try {
+      parseSheet(wb, name);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to parse sheet');
+    }
+  }, [parseSheet]);
+
   // ── parse a file for the first time ───────────────────────────────────────
   const parseFile = useCallback(async (file: File) => {
     setLoading(true);
@@ -49,28 +82,18 @@ export function useFileParser() {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array', cellDates: false, raw: true });
 
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
+      workbookRef.current = workbook;
+      setSheetNames(workbook.SheetNames);
 
-      const aoa: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
-        header: 1,
-        defval: null,
-        raw: true,
-      });
-
-      if (aoa.length < 2) throw new Error('Sheet appears to be empty or has no data rows');
-
-      aoaRef.current = aoa;
-
-      const detected = detectHeaderRow(aoa);
-      setHeaderRowIdx(detected);
-      deriveFromAoa(aoa, detected);
+      const firstName = workbook.SheetNames[0];
+      setCurrentSheet(firstName);
+      parseSheet(workbook, firstName);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to parse file');
     } finally {
       setLoading(false);
     }
-  }, [deriveFromAoa]);
+  }, [parseSheet]);
 
   // ── change the header row (user override) ─────────────────────────────────
   const setHeaderRow = useCallback((idx: number) => {
@@ -84,6 +107,9 @@ export function useFileParser() {
   // ── direct data path (Google Sheets) ──────────────────────────────────────
   const parseFromData = useCallback((headers: string[], rows: RawRow[]) => {
     aoaRef.current = [];
+    workbookRef.current = null;
+    setSheetNames([]);
+    setCurrentSheet('');
     setHeaderRowIdx(0);
     const suggestedMapping = detectColumnMapping(headers, rows);
     setParseResult({ rows, suggestedMapping, headers, warnings: [] });
@@ -93,6 +119,9 @@ export function useFileParser() {
     setParseResult(null);
     setError(null);
     aoaRef.current = [];
+    workbookRef.current = null;
+    setSheetNames([]);
+    setCurrentSheet('');
     setHeaderRowIdx(0);
   }, []);
 
@@ -103,7 +132,11 @@ export function useFileParser() {
     parseFile,
     parseFromData,
     reset,
-    // Row picker support
+    // Sheet picker
+    sheetNames,
+    currentSheet,
+    switchSheet,
+    // Row picker
     headerRowIdx,
     setHeaderRow,
     totalRows:  aoaRef.current.length,

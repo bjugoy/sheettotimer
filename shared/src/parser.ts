@@ -158,7 +158,7 @@ export function detectHeaderRow(aoa: (string | number | null)[][]): number {
 const TIME_HINTS = /start|begin|time|from|at/i;
 const END_HINTS = /end|finish|to|until|stop/i;
 const DUR_HINTS = /dur|length|min|hour/i;
-const TITLE_HINTS = /title|item|topic|session|agenda|name|description|subject/i;
+const TITLE_HINTS = /title|item|topic|session|agenda|name|description|subject|activity|task|program|programme|segment|cue|event|action/i;
 const NOTES_HINTS = /note|script|prompter|speaker|copy/i;
 
 function scoreColumn(header: string, sampleValues: (string | number | null | undefined)[]): ColumnRole {
