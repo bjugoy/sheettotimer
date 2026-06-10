@@ -125,42 +125,38 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────────────────────── */}
-      <section className="border-t border-warm-800/30 bg-warm-900/30">
-        <div className="max-w-6xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { icon: <Radio className="w-5 h-5 text-crimson-400" />, title: 'Real-time sync', body: 'Share a 6-character room code. Everyone sees the same countdown, instantly.' },
-            { icon: <Users className="w-5 h-5 text-amber-400" />, title: 'Operator + viewers', body: 'One operator controls the clock. Viewers follow live on their own screens.' },
-            { icon: <Clock className="w-5 h-5 text-moss-400" />, title: 'Overtime tracking', body: 'Items running long? The timer turns red and cascades the delay through the rest of your show.' },
-          ].map(f => (
-            <div key={f.title} className="space-y-2">
-              {f.icon}
-              <h3 className="text-sm font-semibold text-warm-200">{f.title}</h3>
-              <p className="text-sm text-warm-400 leading-relaxed">{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── Pricing ──────────────────────────────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-8 py-20" id="pricing">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-warm-100 mb-2">Simple pricing</h2>
           <p className="text-warm-400">Start free. Upgrade when you need rooms and collaboration.</p>
           {/* Billing interval toggle */}
-          <div className="inline-flex mt-6 rounded-lg border border-warm-700/50 overflow-hidden text-sm">
+          <div className="inline-flex mt-8 rounded-xl border-2 border-warm-700 bg-warm-900 p-1 gap-1">
             <button
               onClick={() => setBillingInterval('monthly')}
-              className={cn('px-5 py-2 transition-colors',
-                billingInterval === 'monthly' ? 'bg-warm-700 text-warm-100' : 'text-warm-500 hover:text-warm-300')}>
+              className={cn(
+                'px-6 py-2.5 rounded-lg text-sm font-semibold transition-all',
+                billingInterval === 'monthly'
+                  ? 'bg-warm-700 text-warm-100 shadow'
+                  : 'text-warm-400 hover:text-warm-200',
+              )}>
               Monthly
             </button>
             <button
               onClick={() => setBillingInterval('yearly')}
-              className={cn('px-5 py-2 flex items-center gap-2 transition-colors',
-                billingInterval === 'yearly' ? 'bg-warm-700 text-warm-100' : 'text-warm-500 hover:text-warm-300')}>
+              className={cn(
+                'px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2.5 transition-all',
+                billingInterval === 'yearly'
+                  ? 'bg-warm-700 text-warm-100 shadow'
+                  : 'text-warm-400 hover:text-warm-200',
+              )}>
               Yearly
-              <span className="text-[11px] text-moss-400 font-medium">Save up to 58%</span>
+              <span className={cn(
+                'text-[11px] font-bold px-2 py-0.5 rounded-full border',
+                billingInterval === 'yearly'
+                  ? 'bg-moss-800/60 border-moss-600/60 text-moss-300'
+                  : 'bg-moss-900/40 border-moss-700/40 text-moss-400',
+              )}>Save 58%</span>
             </button>
           </div>
         </div>
@@ -202,6 +198,23 @@ export function LandingPage() {
             </div>
           );
           })}
+        </div>
+      </section>
+
+      {/* ── Features ─────────────────────────────────────────────────────────── */}
+      <section className="border-t border-warm-800/30 bg-warm-900/30">
+        <div className="max-w-6xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { icon: <Radio className="w-5 h-5 text-crimson-400" />, title: 'Real-time sync', body: 'Share a 6-character room code. Everyone sees the same countdown, instantly.' },
+            { icon: <Users className="w-5 h-5 text-amber-400" />, title: 'Operator + viewers', body: 'One operator controls the clock. Viewers follow live on their own screens.' },
+            { icon: <Clock className="w-5 h-5 text-moss-400" />, title: 'Overtime tracking', body: 'Items running long? The timer turns red and cascades the delay through the rest of your show.' },
+          ].map(f => (
+            <div key={f.title} className="space-y-2">
+              {f.icon}
+              <h3 className="text-sm font-semibold text-warm-200">{f.title}</h3>
+              <p className="text-sm text-warm-400 leading-relaxed">{f.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
