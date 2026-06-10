@@ -249,8 +249,11 @@ export function rowsToSchedule(
 
     if (startKey && !hasTime) continue;
 
-    // Only retrieve the title from rows that have a time value
-    const rawTitle = titleKey ? String(row[titleKey] ?? '').trim() : '';
+    // Only retrieve the title from rows that have a time value;
+    // collapse line breaks (Excel Alt+Enter) to spaces so the title is always single-line
+    const rawTitle = titleKey
+      ? String(row[titleKey] ?? '').replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim()
+      : '';
     if (!rawTitle) continue;
 
     // Parse start time / time range

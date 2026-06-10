@@ -77,11 +77,16 @@ export function ProfileModal({ onClose }: Props) {
   const handleDelete = async () => {
     setDeleteError('');
     setDeleteLoading(true);
-    const err = await deleteAccount();
-    setDeleteLoading(false);
-    if (err) { setDeleteError(err); return; }
-    onClose();
-    navigate('/landing', { replace: true });
+    try {
+      const err = await deleteAccount();
+      if (err) { setDeleteError(err); return; }
+      onClose();
+      navigate('/landing', { replace: true });
+    } catch {
+      setDeleteError('Something went wrong — please try again');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const doSignOut = async () => {

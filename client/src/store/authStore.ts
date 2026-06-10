@@ -96,25 +96,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   deleteAccount: async () => {
     const token = get().session?.access_token;
     if (!token) return 'Not signed in';
+
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 20_000);
+
     try {
       const res = await fetch(apiUrl('/api/account'), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
+      if (res.status === 401) {
+        // Token already invalid — account was likely deleted in a previous attempt
+        // that didn't clean up the client. Treat as success and clear local state.
+        supabase.auth.signOut().catch(() => {});
+        set({ user: null, session: null, plan: 'free' });
+        return null;
+      }
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({}) as { error?: string });
         return (data as { error?: string }).error ?? 'Failed to delete account';
       }
-    } catch {
+    } catch (e) {
+      clearTimeout(timeoutId);
+      if (e instanceof Error && e.name === 'AbortError') {
+        return 'Request timed out — please try again';
+      }
       return 'Network error — please try again';
     }
-    await supabase.auth.signOut();
+
+    // Fire-and-forget — don't block on Supabase's server call (it can throw if
+    // the user record was just removed, which would leave deleteLoading stuck)
+    supabase.auth.signOut().catch(() => {});
     set({ user: null, session: null, plan: 'free' });
     return null;
   },
 
   signOut: async () => {
-    try { await supabase.auth.signOut(); } catch { /* ignore network errors */ }
+    // Fire-and-forget — don't block navigation on the server round-trip
+    supabase.auth.signOut().catch(() => {});
     set({ user: null, session: null, plan: 'free' });
   },
 

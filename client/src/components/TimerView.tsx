@@ -4,7 +4,7 @@ import { useScheduleStore } from '../store/scheduleStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useSocket } from '../hooks/useSocket';
 import { useTimer } from '../hooks/useTimer';
-import { formatCountdown, formatClock, formatTime, formatDuration, cn } from '../utils/timeUtils';
+import { formatCountdown, formatClock, formatTime, formatDuration, cn, inlineTitle } from '../utils/timeUtils';
 import { ScheduleTablePanel } from './ScheduleTablePanel';
 import { AnnouncementBanner } from './AnnouncementBanner';
 
@@ -124,7 +124,7 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
         {/* Current item name */}
         <div className="px-5 pt-3 pb-1">
           <h2 className="text-warm-100 font-semibold leading-tight text-base">
-            {current.title}
+            {inlineTitle(current.title)}
           </h2>
           <p className="text-[11px] text-warm-600 mt-1 timer-display">
             {formatTime(current.scheduledStart)}–{formatTime(current.scheduledEnd)}
@@ -339,7 +339,7 @@ function UpNextList({ items, currentIndex, nowMs }: UpNextProps) {
               'flex-1 text-xs truncate',
               isNext ? 'text-warm-200' : 'text-warm-500'
             )}>
-              {item.title}
+              {inlineTitle(item.title)}
             </span>
             <span className="shrink-0 text-[11px] text-warm-700 timer-display">
               {formatDuration(item.durationMs)}

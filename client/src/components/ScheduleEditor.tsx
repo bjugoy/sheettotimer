@@ -5,7 +5,7 @@ import { recalculate } from '@program-timer/shared';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useSocket } from '../hooks/useSocket';
-import { formatTime, formatDuration, cn } from '../utils/timeUtils';
+import { formatTime, formatDuration, cn, inlineTitle } from '../utils/timeUtils';
 
 // ── Parse helpers ─────────────────────────────────────────────────────────────
 
@@ -142,13 +142,13 @@ function EditorRow({
       </td>
 
       {/* Title */}
-      <td className={cellCls('overflow-hidden')}>
+      <td className={cellCls('overflow-hidden')} title={item.title}>
         <span className={cn('block truncate text-xs',
           hl      ? 'text-warm-900 font-semibold'
           : isDone ? 'text-warm-500 line-through decoration-warm-600'
           : 'text-warm-200'
         )}>
-          {item.title}
+          {inlineTitle(item.title)}
         </span>
       </td>
 
@@ -178,9 +178,11 @@ function EditorRow({
       {/* Delete */}
       <td className={cn(cellCls(), 'w-8 px-1 text-center')}>
         {canEdit && item.status === 'not_started' && (
-          <button onClick={() => onDelete(item.id)}
-            className="text-warm-700 hover:text-crimson-400 transition-colors
-              opacity-0 group-hover:opacity-100">
+          <button
+            onClick={() => onDelete(item.id)}
+            title="Delete row"
+            className="text-warm-800 hover:text-crimson-400 transition-colors
+              hover:bg-crimson-950/40 rounded p-0.5">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
@@ -254,7 +256,8 @@ export function ScheduleEditor({ onClose, onSyncToSheets, hasSheetsConnection, i
   };
 
   const applyDelete = (id: string) => {
-    updateDraft(recalculate(draftItems.filter(i => i.id !== id), Date.now()));
+    // No recalculate — remaining items keep their original scheduled times
+    updateDraft(draftItems.filter(i => i.id !== id));
   };
 
   // ── Commit / discard ─────────────────────────────────────────────────────────

@@ -54,3 +54,8 @@ export function extractSheetId(url: string): string | null {
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+/** Collapse line breaks and excess whitespace in a title so it fits one line. */
+export function inlineTitle(s: string): string {
+  return s.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+}

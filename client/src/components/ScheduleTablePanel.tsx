@@ -1,6 +1,6 @@
 import React from 'react';
 import { useScheduleStore } from '../store/scheduleStore';
-import { formatTime, formatDuration, cn } from '../utils/timeUtils';
+import { formatTime, formatDuration, cn, inlineTitle } from '../utils/timeUtils';
 
 interface Props { nowMs: number }
 
@@ -103,14 +103,14 @@ export function ScheduleTablePanel({ nowMs }: Props) {
                   )}
                 </td>
 
-                <td className={cn(tdBase(hl, 'overflow-hidden'))}>
+                <td className={cn(tdBase(hl, 'overflow-hidden'))} title={item.title}>
                   <span className={cn(
                     'block truncate',
                     hl      ? 'text-warm-900 font-semibold'
                     : isDone ? 'text-warm-500 line-through decoration-warm-600'
                     : 'text-warm-200'
                   )}>
-                    {item.title}
+                    {inlineTitle(item.title)}
                   </span>
                 </td>
 

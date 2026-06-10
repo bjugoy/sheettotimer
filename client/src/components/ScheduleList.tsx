@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ScheduleItem } from '@program-timer/shared';
-import { formatTime, formatDuration } from '../utils/timeUtils';
+import { formatTime, formatDuration, inlineTitle } from '../utils/timeUtils';
 import { CheckCircle, Circle, Play, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -48,7 +48,7 @@ export function ScheduleList({ items, currentIndex, nowMs }: Props) {
 
             {/* Title */}
             <span className={`flex-1 truncate ${isCurrent ? 'text-white font-medium' : isDone ? 'text-gray-600' : 'text-gray-300'}`}>
-              {item.title}
+              {inlineTitle(item.title)}
             </span>
 
             {/* Duration */}
