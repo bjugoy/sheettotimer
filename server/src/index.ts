@@ -7,6 +7,7 @@ import http from 'http';
 import cors from 'cors';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
+import pg from 'pg';
 import { Server } from 'socket.io';
 import type {
   ServerToClientEvents,
@@ -118,10 +119,13 @@ app.use(express.json({ limit: '5mb' }));
 const PgSession = connectPg(session);
 const sessionStore = process.env.DATABASE_URL
   ? new PgSession({
-      conString:   process.env.DATABASE_URL,
-      tableName:   'sessions',
-      createTableIfMissing: false, // table is created manually via SQL migration
-      pruneSessionInterval: 60 * 60, // clean up expired sessions every hour
+      pool: new pg.Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // required for Supabase connections
+      }),
+      tableName:            'sessions',
+      createTableIfMissing: false,
+      pruneSessionInterval: 60 * 60,
     })
   : undefined; // falls back to in-memory store in local dev
 
