@@ -597,19 +597,21 @@ app.post('/api/billing/portal', async (req, res) => {
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────
 
 app.post('/api/sheets/fetch', async (req, res) => {
-  const accessToken = req.session.googleTokens?.access_token;
-  if (!accessToken) {
+  const rawTokens = req.session.googleTokens;
+  if (!rawTokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
     return;
   }
+  const tokens = { access_token: rawTokens.access_token ?? null, refresh_token: rawTokens.refresh_token ?? null };
   const { spreadsheetId, range } = req.body as { spreadsheetId: string; range?: string };
   if (!spreadsheetId) {
     res.status(400).json({ error: 'Missing spreadsheetId' });
     return;
   }
   try {
-    const data = await fetchSheetData(accessToken, spreadsheetId, range);
-    res.json(data);
+    const { headers, rows, freshTokens } = await fetchSheetData(tokens, spreadsheetId, range);
+    if (freshTokens) req.session.googleTokens = freshTokens;
+    res.json({ headers, rows });
   } catch (e: unknown) {
     console.error('[sheets/fetch]', e);
     res.status(500).json({ error: 'Failed to fetch sheet data. Check your Google Sheets connection.' });
@@ -619,11 +621,12 @@ app.post('/api/sheets/fetch', async (req, res) => {
 // ─── REST: Write back to Google Sheet ────────────────────────────────────────
 
 app.post('/api/sheets/write', async (req, res) => {
-  const accessToken = req.session.googleTokens?.access_token;
-  if (!accessToken) {
+  const rawTokens = req.session.googleTokens;
+  if (!rawTokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
     return;
   }
+  const tokens = { access_token: rawTokens.access_token ?? null, refresh_token: rawTokens.refresh_token ?? null };
   const { spreadsheetId, range, values } = req.body as {
     spreadsheetId: string;
     range: string;
@@ -634,7 +637,8 @@ app.post('/api/sheets/write', async (req, res) => {
     return;
   }
   try {
-    await writeSheetData(accessToken, spreadsheetId, range, values);
+    const { freshTokens } = await writeSheetData(tokens, spreadsheetId, range, values);
+    if (freshTokens) req.session.googleTokens = freshTokens;
     res.json({ ok: true });
   } catch (e: unknown) {
     console.error('[sheets/write]', e);

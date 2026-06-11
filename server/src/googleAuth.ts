@@ -19,13 +19,39 @@ export function getAuthUrl(client: InstanceType<typeof google.auth.OAuth2>): str
   });
 }
 
+export interface Tokens {
+  access_token:  string | null;
+  refresh_token: string | null;
+}
+
+/** Build an authenticated OAuth2 client and capture any token refresh. */
+function buildClient(tokens: Tokens): {
+  auth:         InstanceType<typeof google.auth.OAuth2>;
+  getFreshTokens: () => Tokens | null;
+} {
+  const auth = createOAuthClient();
+  auth.setCredentials({
+    access_token:  tokens.access_token,
+    refresh_token: tokens.refresh_token,
+  });
+
+  let refreshed: Tokens | null = null;
+  auth.on('tokens', (t) => {
+    refreshed = {
+      access_token:  t.access_token  ?? tokens.access_token,
+      refresh_token: t.refresh_token ?? tokens.refresh_token,
+    };
+  });
+
+  return { auth, getFreshTokens: () => refreshed };
+}
+
 export async function fetchSheetData(
-  accessToken: string,
+  tokens: Tokens,
   spreadsheetId: string,
   range = 'A:Z'
-): Promise<{ headers: string[]; rows: Record<string, string | number | null>[] }> {
-  const auth = createOAuthClient();
-  auth.setCredentials({ access_token: accessToken });
+): Promise<{ headers: string[]; rows: Record<string, string | number | null>[]; freshTokens: Tokens | null }> {
+  const { auth, getFreshTokens } = buildClient(tokens);
   const sheets = google.sheets({ version: 'v4', auth });
 
   const res = await sheets.spreadsheets.values.get({
@@ -36,7 +62,7 @@ export async function fetchSheetData(
   });
 
   const rawValues = res.data.values ?? [];
-  if (rawValues.length === 0) return { headers: [], rows: [] };
+  if (rawValues.length === 0) return { headers: [], rows: [], freshTokens: getFreshTokens() };
 
   const headers = (rawValues[0] as string[]).map(h => String(h ?? ''));
   const rows = rawValues.slice(1).map(row => {
@@ -48,17 +74,16 @@ export async function fetchSheetData(
     return obj;
   });
 
-  return { headers, rows };
+  return { headers, rows, freshTokens: getFreshTokens() };
 }
 
 export async function writeSheetData(
-  accessToken: string,
+  tokens: Tokens,
   spreadsheetId: string,
   range: string,
   values: (string | number | null)[][]
-): Promise<void> {
-  const auth = createOAuthClient();
-  auth.setCredentials({ access_token: accessToken });
+): Promise<{ freshTokens: Tokens | null }> {
+  const { auth, getFreshTokens } = buildClient(tokens);
   const sheets = google.sheets({ version: 'v4', auth });
 
   await sheets.spreadsheets.values.update({
@@ -67,4 +92,6 @@ export async function writeSheetData(
     valueInputOption: 'USER_ENTERED',
     requestBody: { values },
   });
+
+  return { freshTokens: getFreshTokens() };
 }
