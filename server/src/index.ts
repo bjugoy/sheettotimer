@@ -6,6 +6,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import session from 'express-session';
+import connectPg from 'connect-pg-simple';
 import { Server } from 'socket.io';
 import type {
   ServerToClientEvents,
@@ -113,8 +114,20 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 });
 
 app.use(express.json({ limit: '5mb' }));
+
+const PgSession = connectPg(session);
+const sessionStore = process.env.DATABASE_URL
+  ? new PgSession({
+      conString:   process.env.DATABASE_URL,
+      tableName:   'sessions',
+      createTableIfMissing: false, // table is created manually via SQL migration
+      pruneSessionInterval: 60 * 60, // clean up expired sessions every hour
+    })
+  : undefined; // falls back to in-memory store in local dev
+
 app.use(
   session({
+    store: sessionStore,
     secret: process.env.SESSION_SECRET ?? 'dev-secret',
     resave: false,
     saveUninitialized: false,
