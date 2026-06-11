@@ -66,5 +66,9 @@ export function useGoogleSheets() {
     window.location.href = apiUrl('/auth/google');
   }, []);
 
-  return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth };
+  const disconnect = useCallback(async (): Promise<void> => {
+    await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(() => {});
+  }, []);
+
+  return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect };
 }

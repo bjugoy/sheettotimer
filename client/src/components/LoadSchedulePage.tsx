@@ -30,10 +30,11 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, canUseGoogleShe
   const plan                = useAuthStore(s => s.plan);
   const { canUseCustomColumns } = getPlanFeatures(plan);
 
-  const { fetchSheet, syncError } = useGoogleSheets();
+  const { fetchSheet, syncError, disconnect } = useGoogleSheets();
   const setItems        = useScheduleStore(s => s.setItems);
   const setColumnMapping = useScheduleStore(s => s.setColumnMapping);
-  const setSpreadsheetId = useScheduleStore(s => s.setSpreadsheetId);
+  const setSpreadsheetId       = useScheduleStore(s => s.setSpreadsheetId);
+  const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
   const { sendSchedule } = useSocket();
   const [sheetLoading, setSheetLoading] = useState(false);
   const [sheetError, setSheetError]     = useState<string | null>(null);
@@ -121,6 +122,10 @@ export function LoadSchedulePage({ isGoogleAuthed, onGoogleAuth, canUseGoogleShe
                 onSheetUrl={handleSheetUrl}
                 isGoogleAuthed={isGoogleAuthed}
                 onGoogleAuth={onGoogleAuth}
+                onGoogleDisconnect={async () => {
+                  await disconnect();
+                  setGoogleAuthenticated(false);
+                }}
                 canUseGoogleSheets={canUseGoogleSheets}
                 loading={loading || sheetLoading}
               />

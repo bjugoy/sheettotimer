@@ -7,11 +7,12 @@ interface Props {
   onSheetUrl: (spreadsheetId: string) => void;
   isGoogleAuthed: boolean;
   onGoogleAuth: () => void;
+  onGoogleDisconnect: () => void;
   canUseGoogleSheets?: boolean;
   loading?: boolean;
 }
 
-export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, canUseGoogleSheets = false, loading }: Props) {
+export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, onGoogleDisconnect, canUseGoogleSheets = false, loading }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -189,22 +190,29 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
             Requires Pro or higher — upgrade to connect Google Sheets directly.
           </p>
         ) : isGoogleAuthed ? (
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={urlInput}
-              onChange={e => { setUrlInput(e.target.value); setUrlError(''); }}
-              placeholder="https://docs.google.com/spreadsheets/d/…"
-              className="flex-1 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-2
-                text-sm text-warm-200 placeholder-warm-700 focus:outline-none
-                focus:border-crimson-700/60 transition-colors"
-              onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
-            />
-            <button onClick={handleUrlSubmit} disabled={!urlInput.trim()}
-              className="px-4 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
-                disabled:opacity-40 disabled:cursor-not-allowed border border-crimson-700/50
-                rounded-lg text-sm font-medium text-warm-100 transition-colors">
-              Load
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={e => { setUrlInput(e.target.value); setUrlError(''); }}
+                placeholder="https://docs.google.com/spreadsheets/d/…"
+                className="flex-1 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-2
+                  text-sm text-warm-200 placeholder-warm-700 focus:outline-none
+                  focus:border-crimson-700/60 transition-colors"
+                onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
+              />
+              <button onClick={handleUrlSubmit} disabled={!urlInput.trim()}
+                className="px-4 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
+                  disabled:opacity-40 disabled:cursor-not-allowed border border-crimson-700/50
+                  rounded-lg text-sm font-medium text-warm-100 transition-colors">
+                Load
+              </button>
+            </div>
+            <button
+              onClick={onGoogleDisconnect}
+              className="text-[11px] text-warm-600 hover:text-warm-400 transition-colors">
+              Disconnect Google account
             </button>
           </div>
         ) : (
