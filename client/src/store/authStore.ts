@@ -50,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const clearFallback = () => clearTimeout(fallback);
 
     supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[auth] onAuthStateChange:', event, session?.user?.email ?? 'no user');
       if (session?.user) {
         clearFallback();
         // Use get().plan as fallback so a failing fetchPlan doesn't overwrite
@@ -78,7 +79,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (!_oauthCallback) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[auth] calling getSession()...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('[auth] getSession() result:', session?.user?.email ?? 'null', error ? `error: ${error.message}` : '');
         clearFallback();
         if (session?.user) {
           const plan = await fetchPlan(session.user.id).catch(() => get().plan);
@@ -88,11 +91,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           // (e.g. TOKEN_REFRESHED fired while getSession() was awaiting).
           set(s => s.loading ? { user: null, session: null, plan: 'free', loading: false } : s);
         }
-      } catch {
+      } catch (e) {
         // Unexpected error — unblock loading without signing out.
+        console.error('[auth] getSession() threw:', e);
         clearFallback();
         set(s => s.loading ? { loading: false } : s);
       }
+    } else {
+      console.log('[auth] skipping getSession() — OAuth callback detected');
     }
   },
 
