@@ -47,6 +47,10 @@ const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
 if (isProd && !process.env.SESSION_SECRET) {
   throw new Error('[startup] SESSION_SECRET env var is required in production. Set it in your Heroku config vars.');
 }
+// Support comma-separated secrets for zero-downtime rotation:
+// set SESSION_SECRET="newSecret,oldSecret", deploy, wait 24 h, then set SESSION_SECRET="newSecret"
+const sessionSecrets = (process.env.SESSION_SECRET ?? 'dev-secret')
+  .split(',').map(s => s.trim()).filter(Boolean);
 if (isProd && !CLIENT_URL.startsWith('https://')) {
   console.warn('[startup] WARNING: CLIENT_URL is not HTTPS — session cookies will be transmitted insecurely:', CLIENT_URL);
 }
@@ -140,7 +144,7 @@ const sessionStore = process.env.DATABASE_URL
 app.use(
   session({
     store: sessionStore,
-    secret: process.env.SESSION_SECRET ?? 'dev-secret',
+    secret: sessionSecrets,
     resave: false,
     saveUninitialized: false,
     cookie: {
