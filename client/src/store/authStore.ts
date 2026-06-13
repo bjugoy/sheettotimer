@@ -30,24 +30,6 @@ const _oauthCallback =
   window.location.hash.includes('access_token') ||
   new URLSearchParams(window.location.search).has('code');
 
-// Read the Supabase session synchronously from localStorage at module-load time.
-// This eliminates the flash-of-null-user on refresh: the store is pre-seeded
-// with the stored user before any async initialization runs.
-function _readStoredSession(): Session | null {
-  try {
-    const key = Object.keys(localStorage).find(
-      k => k.startsWith('sb-') && k.endsWith('-auth-token')
-    );
-    if (!key) return null;
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return (parsed?.access_token && parsed?.user) ? parsed as Session : null;
-  } catch { return null; }
-}
-
-const _storedSession = _oauthCallback ? null : _readStoredSession();
-
 async function fetchPlan(userId: string): Promise<Plan> {
   const { data } = await supabase
     .from('profiles')
@@ -64,30 +46,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
 
   initialize: async () => {
-    // No stored session and no OAuth callback — definitely not logged in.
-    if (!_storedSession && !_oauthCallback) {
-      set({ loading: false });
-      return;
-    }
-
-    let fallback: ReturnType<typeof setTimeout> | null = null;
-    if (!_oauthCallback) {
-      fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
-    }
-
-    const clearFallback = () => { if (fallback) clearTimeout(fallback); };
+    const fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
+    const clearFallback = () => clearTimeout(fallback);
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         clearFallback();
-        // Preserve whatever plan getSession() already fetched rather than
-        // falling back to 'free' — onAuthStateChange can fire after getSession()
-        // and a failing fetchPlan would otherwise overwrite the correct plan.
+        // Use get().plan as fallback so a failing fetchPlan doesn't overwrite
+        // a correct plan that getSession() may have already set.
         const plan = await fetchPlan(session.user.id).catch(() => get().plan);
         set({ user: session.user, session, plan, loading: false });
       } else if (event === 'SIGNED_OUT') {
-        // Double-check before signing out — SIGNED_OUT fires spuriously on page
-        // focus when a popup closes and the token refresh races.
+        // Double-check before committing to sign-out — SIGNED_OUT fires spuriously
+        // when the page regains focus after a popup closes and the token refresh races.
         const { data: { session: live } } = await supabase.auth.getSession()
           .catch(() => ({ data: { session: null } }));
         if (live?.user) {
@@ -98,7 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ user: null, session: null, plan: 'free', loading: false });
         }
       }
-      // INITIAL_SESSION with null: don't act — getSession() below is authoritative.
+      // INITIAL_SESSION with null: do nothing here — getSession() below is authoritative.
     });
 
     if (!_oauthCallback) {
@@ -109,20 +80,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const plan = await fetchPlan(session.user.id).catch(() => 'free' as Plan);
           set({ user: session.user, session, plan, loading: false });
         } else {
-          // Session expired/revoked — only clear if we haven't already been
-          // signed in by a concurrent INITIAL_SESSION/SIGNED_IN event.
+          // Only clear if onAuthStateChange hasn't already signed us in
+          // (e.g. TOKEN_REFRESHED fired while getSession() was awaiting).
           set(s => s.loading ? { user: null, session: null, plan: 'free', loading: false } : s);
         }
       } catch {
-        // Network error during token refresh — fall back to stored session so the
-        // user isn't signed out for a transient failure. They'll get 401s on API
-        // calls if the token is truly expired, but won't lose their session state.
+        // Unexpected error — unblock loading without signing out.
         clearFallback();
-        if (_storedSession?.user) {
-          set({ user: _storedSession.user, session: _storedSession, loading: false });
-        } else {
-          set({ loading: false });
-        }
+        set(s => s.loading ? { loading: false } : s);
       }
     }
   },
