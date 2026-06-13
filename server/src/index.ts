@@ -1,5 +1,6 @@
 import './instrument'; // must be first — Sentry SDK setup
 import 'dotenv/config';
+import { randomBytes } from 'crypto';
 import * as Sentry from '@sentry/node';
 import helmet from 'helmet';
 import express from 'express';
@@ -208,7 +209,29 @@ function requireOperator(socketId: string): string | null {
   return code;
 }
 
+// Per-socket CSRF tokens — generated on connect, validated on every mutating event
+const socketCsrfTokens = new Map<string, string>();
+const MUTATING_EVENTS = new Set([
+  'schedule:set', 'schedule:updateItem', 'item:start', 'item:done',
+  'item:advance', 'item:revert', 'room:setRole', 'announcement:send',
+]);
+
 io.on('connection', (socket) => {
+  // Generate and emit a CSRF token for this socket connection
+  const csrfToken = randomBytes(32).toString('hex');
+  socketCsrfTokens.set(socket.id, csrfToken);
+  socket.emit('csrf:token', csrfToken);
+
+  // Reject mutating events that don't carry the correct CSRF token
+  socket.use(([event, ...args], next) => {
+    if (!MUTATING_EVENTS.has(event as string)) { next(); return; }
+    const csrf = (args[0] as Record<string, unknown> | undefined)?._csrf;
+    if (!csrf || csrf !== socketCsrfTokens.get(socket.id)) {
+      socket.emit('error', 'Invalid session token — please refresh the page');
+      return;
+    }
+    next();
+  });
   // ── Room create (requires premium auth token) ────────────────────────────
   socket.on('room:create', async ({ name, authToken }) => {
     try {
@@ -298,7 +321,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Schedule set (full replace) ──────────────────────────────────────────
-  socket.on('schedule:set', (schedule) => {
+  socket.on('schedule:set', ({ schedule }) => {
     try {
       const code = requireOperator(socket.id);
       if (!code) { socket.emit('error', 'Only operators can modify the schedule'); return; }
@@ -337,7 +360,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Advance to next item ─────────────────────────────────────────────────
-  socket.on('item:advance', () => {
+  socket.on('item:advance', (_payload) => {
     try {
       const code = requireOperator(socket.id);
       if (!code) { socket.emit('error', 'Only operators can advance items'); return; }
@@ -408,7 +431,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Revert to previous item ─────────────────────────────────────────────
-  socket.on('item:revert', () => {
+  socket.on('item:revert', (_payload) => {
     try {
       const code = requireOperator(socket.id);
       if (!code) { socket.emit('error', 'Only operators can control the timer'); return; }
@@ -472,6 +495,7 @@ io.on('connection', (socket) => {
 
   // ── Disconnect ───────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
+    socketCsrfTokens.delete(socket.id);
     socketEventCounts.delete(socket.id);
     joinAttempts.delete(socket.id);
     const code = unregisterSocket(socket.id);
@@ -679,6 +703,14 @@ app.post('/api/billing/portal', async (req, res) => {
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────
 
 app.post('/api/sheets/fetch', async (req, res) => {
+  const authHeader = req.headers.authorization?.replace('Bearer ', '');
+  if (authHeader) {
+    const verified = await verifyToken(authHeader);
+    if (!verified || verified.plan === 'free') {
+      res.status(403).json({ error: 'Google Sheets integration requires a Pro or Studio plan' });
+      return;
+    }
+  }
   const tokens = getSessionTokens(req);
   if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
@@ -712,6 +744,14 @@ app.post('/api/sheets/fetch', async (req, res) => {
 // ─── REST: Write back to Google Sheet ────────────────────────────────────────
 
 app.post('/api/sheets/write', async (req, res) => {
+  const authHeader = req.headers.authorization?.replace('Bearer ', '');
+  if (authHeader) {
+    const verified = await verifyToken(authHeader);
+    if (!verified || verified.plan === 'free') {
+      res.status(403).json({ error: 'Google Sheets integration requires a Pro or Studio plan' });
+      return;
+    }
+  }
   const tokens = getSessionTokens(req);
   if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });

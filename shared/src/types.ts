@@ -91,18 +91,19 @@ export interface ServerToClientEvents {
   'room:joined': (payload: { room: Room; user: RoomUser }) => void;
   'room:roleChanged': (user: RoomUser) => void;
   'session:ended': (reason: string) => void;
+  'csrf:token': (token: string) => void;
   'error': (message: string) => void;
 }
 
 export interface ClientToServerEvents {
   'room:join': (payload: { code: string; name: string; authToken?: string }) => void;
   'room:create': (payload: { name: string; authToken: string }) => void;
-  'room:setRole': (payload: { targetSocketId: string; role: UserRole }) => void;
-  'schedule:set': (schedule: ScheduleItem[]) => void;
-  'schedule:updateItem': (payload: { id: string; changes: Partial<ScheduleItem> }) => void;
-  'item:start': (payload: { id: string; actualStart: number }) => void;
-  'item:done': (payload: { id: string; actualEnd: number }) => void;
-  'item:advance': () => void;
-  'item:revert': () => void;
-  'announcement:send': (payload: { text: string }) => void;
+  'room:setRole': (payload: { targetSocketId: string; role: UserRole; _csrf: string }) => void;
+  'schedule:set': (payload: { schedule: ScheduleItem[]; _csrf: string }) => void;
+  'schedule:updateItem': (payload: { id: string; changes: Partial<ScheduleItem>; _csrf: string }) => void;
+  'item:start': (payload: { id: string; actualStart: number; _csrf: string }) => void;
+  'item:done': (payload: { id: string; actualEnd: number; _csrf: string }) => void;
+  'item:advance': (payload: { _csrf: string }) => void;
+  'item:revert': (payload: { _csrf: string }) => void;
+  'announcement:send': (payload: { text: string; _csrf: string }) => void;
 }

@@ -18,7 +18,9 @@ function getSocket(): AppSocket {
 }
 
 export function useSocket() {
-  const socketRef = useRef<AppSocket>(getSocket());
+  const socketRef    = useRef<AppSocket>(getSocket());
+  const csrfTokenRef = useRef<string>('');
+
   const setItems = useScheduleStore(s => s.setItems);
   const syncItems = useScheduleStore(s => s.syncItems);
   const setCurrentIndex = useScheduleStore(s => s.setCurrentIndex);
@@ -37,6 +39,10 @@ export function useSocket() {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
 
+    socket.on('csrf:token', (token) => {
+      csrfTokenRef.current = token;
+    });
+
     socket.on('room:joined', ({ room, user }) => {
       setRoom(room.code);
       setUser(user);
@@ -45,7 +51,7 @@ export function useSocket() {
         setCurrentIndex(room.currentIndex);
       } else if (user.role === 'operator') {
         const loaded = useScheduleStore.getState().items;
-        if (loaded.length > 0) socketRef.current.emit('schedule:set', loaded);
+        if (loaded.length > 0) socketRef.current.emit('schedule:set', { schedule: loaded, _csrf: csrfTokenRef.current });
       }
       // Persist session so the operator can rejoin after a page refresh
       try {
@@ -91,6 +97,7 @@ export function useSocket() {
     return () => {
       socket.off('connect');
       socket.off('disconnect');
+      socket.off('csrf:token');
       socket.off('room:joined');
       socket.off('room:users');
       socket.off('room:roleChanged');
@@ -113,27 +120,27 @@ export function useSocket() {
   }, []);
 
   const setUserRole = useCallback((targetSocketId: string, role: UserRole) => {
-    socketRef.current.emit('room:setRole', { targetSocketId, role });
+    socketRef.current.emit('room:setRole', { targetSocketId, role, _csrf: csrfTokenRef.current });
   }, []);
 
   const sendSchedule = useCallback((schedule: ScheduleItem[]) => {
-    socketRef.current.emit('schedule:set', schedule);
+    socketRef.current.emit('schedule:set', { schedule, _csrf: csrfTokenRef.current });
   }, []);
 
   const updateItem = useCallback((id: string, changes: Partial<ScheduleItem>) => {
-    socketRef.current.emit('schedule:updateItem', { id, changes });
+    socketRef.current.emit('schedule:updateItem', { id, changes, _csrf: csrfTokenRef.current });
   }, []);
 
   const advanceItem = useCallback(() => {
-    socketRef.current.emit('item:advance');
+    socketRef.current.emit('item:advance', { _csrf: csrfTokenRef.current });
   }, []);
 
   const revertItem = useCallback(() => {
-    socketRef.current.emit('item:revert');
+    socketRef.current.emit('item:revert', { _csrf: csrfTokenRef.current });
   }, []);
 
   const sendAnnouncement = useCallback((text: string) => {
-    socketRef.current.emit('announcement:send', { text });
+    socketRef.current.emit('announcement:send', { text, _csrf: csrfTokenRef.current });
   }, []);
 
   return { createRoom, joinRoom, sendSchedule, updateItem, advanceItem, revertItem, sendAnnouncement, setUserRole };

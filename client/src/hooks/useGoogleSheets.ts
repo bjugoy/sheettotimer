@@ -2,15 +2,21 @@ import { useState, useCallback } from 'react';
 import type { ScheduleItem } from '@program-timer/shared';
 import { formatTime } from '../utils/timeUtils';
 import { apiUrl } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 
 export function useGoogleSheets() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const getToken = useAuthStore(s => s.getToken);
 
   const fetchSheet = useCallback(async (spreadsheetId: string) => {
+    const token = getToken();
     const res = await fetch(apiUrl('/api/sheets/fetch'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       credentials: 'include',
       body: JSON.stringify({ spreadsheetId }),
     });
@@ -35,9 +41,13 @@ export function useGoogleSheets() {
       ]);
       const values = [headers, ...rows];
 
+      const token = getToken();
       const res = await fetch(apiUrl('/api/sheets/write'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         credentials: 'include',
         body: JSON.stringify({ spreadsheetId, range: 'A1', values }),
       });
