@@ -35,6 +35,7 @@ import {
   addAnnouncement,
 } from './rooms';
 import { createOAuthClient, getAuthUrl, fetchSheetData, writeSheetData } from './googleAuth';
+import { encryptTokens, decryptTokens } from './tokenCrypto';
 
 const app = express();
 const server = http.createServer(app);
@@ -47,6 +48,9 @@ if (isProd && !process.env.SESSION_SECRET) {
 }
 if (isProd && !CLIENT_URL.startsWith('https://')) {
   console.warn('[startup] WARNING: CLIENT_URL is not HTTPS — session cookies will be transmitted insecurely:', CLIENT_URL);
+}
+if (isProd && !process.env.TOKEN_ENCRYPTION_KEY) {
+  throw new Error('[startup] TOKEN_ENCRYPTION_KEY is required in production. Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"');
 }
 
 // Support comma-separated origins and automatically include www ↔ non-www variants
@@ -482,8 +486,18 @@ io.on('connection', (socket) => {
 
 declare module 'express-session' {
   interface SessionData {
-    googleTokens?: { access_token?: string | null; refresh_token?: string | null };
+    // AES-256-GCM encrypted JSON — never stored as plaintext
+    googleTokensEnc?: string;
   }
+}
+
+// Helpers so token crypto is never done inline across multiple routes
+function getSessionTokens(req: express.Request) {
+  if (!req.session.googleTokensEnc) return null;
+  try { return decryptTokens(req.session.googleTokensEnc); } catch { return null; }
+}
+function setSessionTokens(req: express.Request, tokens: { access_token: string | null; refresh_token: string | null }) {
+  req.session.googleTokensEnc = encryptTokens(tokens);
 }
 
 app.get('/auth/google', (_req, res) => {
@@ -500,10 +514,10 @@ app.get('/auth/google/callback', async (req, res) => {
   try {
     const client = createOAuthClient();
     const { tokens } = await client.getToken(code);
-    req.session.googleTokens = {
+    setSessionTokens(req, {
       access_token:  tokens.access_token  ?? null,
       refresh_token: tokens.refresh_token ?? null,
-    };
+    });
     res.redirect(`${CLIENT_URL}?auth=success`);
   } catch (e) {
     res.redirect(`${CLIENT_URL}?auth=error`);
@@ -511,7 +525,8 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 app.get('/auth/status', (req, res) => {
-  res.json({ authenticated: !!req.session.googleTokens?.access_token });
+  const tokens = getSessionTokens(req);
+  res.json({ authenticated: !!tokens?.access_token });
 });
 
 app.post('/auth/logout', (req, res) => {
@@ -668,12 +683,11 @@ app.post('/api/billing/portal', async (req, res) => {
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────
 
 app.post('/api/sheets/fetch', async (req, res) => {
-  const rawTokens = req.session.googleTokens;
-  if (!rawTokens?.access_token) {
+  const tokens = getSessionTokens(req);
+  if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
     return;
   }
-  const tokens = { access_token: rawTokens.access_token ?? null, refresh_token: rawTokens.refresh_token ?? null };
   const { spreadsheetId, range } = req.body as { spreadsheetId: string; range?: string };
   if (!spreadsheetId || typeof spreadsheetId !== 'string') {
     res.status(400).json({ error: 'Missing spreadsheetId' });
@@ -685,7 +699,7 @@ app.post('/api/sheets/fetch', async (req, res) => {
   }
   try {
     const { headers, rows, freshTokens } = await fetchSheetData(tokens, spreadsheetId, range);
-    if (freshTokens) req.session.googleTokens = freshTokens;
+    if (freshTokens) setSessionTokens(req, freshTokens);
     res.json({ headers, rows });
   } catch (e: unknown) {
     console.error('[sheets/fetch]', e);
@@ -696,12 +710,11 @@ app.post('/api/sheets/fetch', async (req, res) => {
 // ─── REST: Write back to Google Sheet ────────────────────────────────────────
 
 app.post('/api/sheets/write', async (req, res) => {
-  const rawTokens = req.session.googleTokens;
-  if (!rawTokens?.access_token) {
+  const tokens = getSessionTokens(req);
+  if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
     return;
   }
-  const tokens = { access_token: rawTokens.access_token ?? null, refresh_token: rawTokens.refresh_token ?? null };
   const { spreadsheetId, range, values } = req.body as {
     spreadsheetId: string;
     range: string;
@@ -721,7 +734,7 @@ app.post('/api/sheets/write', async (req, res) => {
   }
   try {
     const { freshTokens } = await writeSheetData(tokens, spreadsheetId, range, values);
-    if (freshTokens) req.session.googleTokens = freshTokens;
+    if (freshTokens) setSessionTokens(req, freshTokens);
     res.json({ ok: true });
   } catch (e: unknown) {
     console.error('[sheets/write]', e);
