@@ -46,8 +46,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
 
   initialize: async () => {
-    console.log('[auth] initialize — oauthCallback:', _oauthCallback, '| url:', window.location.href);
-
     let fallback: ReturnType<typeof setTimeout> | null = null;
     if (!_oauthCallback) {
       fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
@@ -56,7 +54,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const clearFallback = () => { if (fallback) clearTimeout(fallback); };
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('[auth] onAuthStateChange:', _event, '| user:', session?.user?.email ?? null);
       if (session?.user) {
         clearFallback();
         const plan = await fetchPlan(session.user.id);
@@ -70,14 +67,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!_oauthCallback) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('[auth] getSession result:', session?.user?.email ?? null);
         if (session?.user) {
           clearFallback();
           const plan = await fetchPlan(session.user.id);
           set({ user: session.user, session, plan, loading: false });
         }
-      } catch (e) {
-        console.error('[auth] getSession error:', e);
+      } catch {
         clearFallback();
         set({ loading: false });
       }
@@ -101,7 +96,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithGoogle: async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: 'https://sheettotimer.com' },
     });
     return error?.message ?? null;
   },
