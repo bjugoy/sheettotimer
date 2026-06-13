@@ -31,11 +31,12 @@ const _oauthCallback =
   new URLSearchParams(window.location.search).has('code');
 
 async function fetchPlan(userId: string): Promise<Plan> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('plan')
     .eq('id', userId)
     .single();
+  console.log('[auth] fetchPlan:', { data, error: error?.message, userId });
   return (data?.plan as Plan) ?? 'free';
 }
 
@@ -50,7 +51,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const clearFallback = () => clearTimeout(fallback);
 
     supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[auth] onAuthStateChange:', event, session?.user?.email ?? 'no user');
+      console.log('[auth] onAuthStateChange:', event, session?.user?.email ?? 'no user', 'metadata:', JSON.stringify(session?.user?.user_metadata));
       if (session?.user) {
         clearFallback();
         // Use get().plan as fallback so a failing fetchPlan doesn't overwrite
