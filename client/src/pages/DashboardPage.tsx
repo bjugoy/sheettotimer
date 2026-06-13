@@ -75,7 +75,7 @@ export function DashboardPage() {
     finally { setLoadingProds(false); }
   }, []);
 
-  useEffect(() => { if (user) loadProds(); }, [user]);
+  useEffect(() => { if (user && !authLoading) loadProds(); }, [user, authLoading]);
 
   // ── Load events when production selected ──────────────────────────────────
   useEffect(() => {

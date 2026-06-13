@@ -58,10 +58,8 @@ async function fetchPlan(userId: string): Promise<Plan> {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  // Pre-seed from localStorage so the user is never null on a page refresh.
-  // initialize() will verify and refresh the token in the background.
-  user:    _storedSession?.user ?? null,
-  session: _storedSession       ?? null,
+  user:    null,
+  session: null,
   plan:    'free',
   loading: true,
 
@@ -82,7 +80,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         clearFallback();
-        const plan = await fetchPlan(session.user.id).catch(() => 'free' as Plan);
+        // Preserve whatever plan getSession() already fetched rather than
+        // falling back to 'free' — onAuthStateChange can fire after getSession()
+        // and a failing fetchPlan would otherwise overwrite the correct plan.
+        const plan = await fetchPlan(session.user.id).catch(() => get().plan);
         set({ user: session.user, session, plan, loading: false });
       } else if (event === 'SIGNED_OUT') {
         // Double-check before signing out — SIGNED_OUT fires spuriously on page
@@ -90,7 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: { session: live } } = await supabase.auth.getSession()
           .catch(() => ({ data: { session: null } }));
         if (live?.user) {
-          const plan = await fetchPlan(live.user.id).catch(() => 'free' as Plan);
+          const plan = await fetchPlan(live.user.id).catch(() => get().plan);
           set({ user: live.user, session: live, plan, loading: false });
         } else {
           clearFallback();
@@ -113,10 +114,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set(s => s.loading ? { user: null, session: null, plan: 'free', loading: false } : s);
         }
       } catch {
-        // Network error during token refresh — unblock loading but keep the
-        // stored user rather than signing them out for a transient failure.
+        // Network error during token refresh — fall back to stored session so the
+        // user isn't signed out for a transient failure. They'll get 401s on API
+        // calls if the token is truly expired, but won't lose their session state.
         clearFallback();
-        set({ loading: false });
+        if (_storedSession?.user) {
+          set({ user: _storedSession.user, session: _storedSession, loading: false });
+        } else {
+          set({ loading: false });
+        }
       }
     }
   },
