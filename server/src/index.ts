@@ -546,9 +546,9 @@ app.get('/auth/google/callback', async (req, res) => {
       access_token:  tokens.access_token  ?? null,
       refresh_token: tokens.refresh_token ?? null,
     });
-    res.redirect(`${CLIENT_URL}?auth=success`);
+    res.redirect(`${CLIENT_URL}/dashboard?auth=success`);
   } catch (e) {
-    res.redirect(`${CLIENT_URL}?auth=error`);
+    res.redirect(`${CLIENT_URL}/dashboard?auth=error`);
   }
 });
 

@@ -77,8 +77,11 @@ export default function App() {
   const { createRoom, joinRoom, setUserRole } = useSocket();
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('auth') === 'success') window.history.replaceState({}, '', location.pathname);
+    const params = new URLSearchParams(window.location.search);
+    const authParam = params.get('auth');
+    if (authParam === 'success' || authParam === 'error') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
     checkAuthStatus().then(setGoogleAuthenticated);
   }, []);
 
