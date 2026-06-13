@@ -560,6 +560,26 @@ app.delete('/api/account', async (req, res) => {
 
 // ─── REST: Billing ───────────────────────────────────────────────────────────
 
+// Look up a Stripe customer ID for a user. Primary source is the stored
+// stripe_customer_id in the profile. If missing (e.g. setStripeCustomerId
+// failed after checkout), fall back to a metadata search — safer than email
+// lookup because supabase_id is unique, unlike email addresses.
+async function resolveStripeCustomerId(userId: string): Promise<string | null> {
+  const stored = await getStripeCustomerId(userId);
+  if (stored) return stored;
+
+  const results = await stripe.customers.search({
+    query: `metadata['supabase_id']:'${userId}'`,
+    limit: 1,
+  });
+  if (results.data.length > 0) {
+    const customerId = results.data[0].id;
+    await setStripeCustomerId(userId, customerId); // backfill so future lookups are instant
+    return customerId;
+  }
+  return null;
+}
+
 app.post('/api/billing/checkout', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'Unauthorized' }); return; }
@@ -611,19 +631,7 @@ app.post('/api/billing/sync', async (req, res) => {
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
   try {
-    let customerId = await getStripeCustomerId(verified.userId);
-
-    // Fallback: look up by email and backfill if missing
-    if (!customerId) {
-      const email = await getUserEmail(verified.userId);
-      if (email) {
-        const customers = await stripe.customers.list({ email, limit: 1 });
-        if (customers.data.length > 0) {
-          customerId = customers.data[0].id;
-          await setStripeCustomerId(verified.userId, customerId);
-        }
-      }
-    }
+    const customerId = await resolveStripeCustomerId(verified.userId);
 
     if (!customerId) { res.json({ plan: 'free' }); return; }
 
@@ -652,19 +660,7 @@ app.post('/api/billing/portal', async (req, res) => {
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
   try {
-    let customerId = await getStripeCustomerId(verified.userId);
-
-    // Fallback: stripe_customer_id missing from profile — look up by email and backfill
-    if (!customerId) {
-      const email = await getUserEmail(verified.userId);
-      if (email) {
-        const customers = await stripe.customers.list({ email, limit: 1 });
-        if (customers.data.length > 0) {
-          customerId = customers.data[0].id;
-          await setStripeCustomerId(verified.userId, customerId);
-        }
-      }
-    }
+    const customerId = await resolveStripeCustomerId(verified.userId);
 
     if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
 
