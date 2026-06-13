@@ -11,6 +11,7 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { useAuthStore } from './store/authStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
+import { syncPlanFromStripe } from './lib/billing';
 import { CookieBanner } from './components/CookieBanner';
 import './index.css';
 
@@ -45,8 +46,28 @@ function RootRedirect() {
 }
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
-  const initialize = useAuthStore(s => s.initialize);
+  const initialize    = useAuthStore(s => s.initialize);
+  const getToken      = useAuthStore(s => s.getToken);
+  const setPlan       = useAuthStore(s => s.setPlan);
+  const refreshPlan   = useAuthStore(s => s.refreshPlan);
+
   useEffect(() => { initialize(); }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('billing') !== 'success') return;
+    window.history.replaceState({}, '', window.location.pathname);
+    const token = getToken();
+    if (token) {
+      syncPlanFromStripe(token).then(plan => {
+        if (plan) setPlan(plan as import('./lib/plans').Plan);
+        else refreshPlan();
+      });
+    } else {
+      refreshPlan();
+    }
+  }, []);
+
   return <>{children}</>;
 }
 

@@ -622,10 +622,14 @@ app.post('/api/billing/checkout', async (req, res) => {
   const verified = await verifyToken(token);
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
-  const { plan, interval = 'monthly' } = req.body as { plan: 'premium1' | 'premium2'; interval?: 'monthly' | 'yearly' };
+  const { plan, interval = 'monthly', returnUrl } = req.body as { plan: 'premium1' | 'premium2'; interval?: 'monthly' | 'yearly'; returnUrl?: string };
   if (interval !== 'monthly' && interval !== 'yearly') { res.status(400).json({ error: 'Invalid interval' }); return; }
   const priceId = PRICE_IDS[plan]?.[interval];
   if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
+
+  const safeReturn = (typeof returnUrl === 'string' && returnUrl.startsWith(CLIENT_URL))
+    ? returnUrl
+    : `${CLIENT_URL}/dashboard`;
 
   try {
     let customerId = await getStripeCustomerId(verified.userId);
@@ -643,12 +647,13 @@ app.post('/api/billing/checkout', async (req, res) => {
     const windowKey = Math.floor(Date.now() / (5 * 60 * 1000));
     const idempotencyKey = `checkout-${verified.userId}-${plan}-${interval}-${windowKey}`;
 
+    const successUrl = safeReturn + (safeReturn.includes('?') ? '&' : '?') + 'billing=success';
     const session = await stripe.checkout.sessions.create({
       customer:              customerId,
       mode:                  'subscription',
       line_items:            [{ price: priceId, quantity: 1 }],
-      success_url:           `${CLIENT_URL}/?billing=success`,
-      cancel_url:            `${CLIENT_URL}/`,
+      success_url:           successUrl,
+      cancel_url:            safeReturn,
       allow_promotion_codes: true,
     }, { idempotencyKey });
 
@@ -700,9 +705,12 @@ app.post('/api/billing/portal', async (req, res) => {
 
     if (!customerId) { res.status(400).json({ error: 'No billing account found' }); return; }
 
+    const portalReturn = (typeof req.body.returnUrl === 'string' && req.body.returnUrl.startsWith(CLIENT_URL))
+      ? req.body.returnUrl
+      : `${CLIENT_URL}/dashboard`;
     const session = await stripe.billingPortal.sessions.create({
       customer:   customerId,
-      return_url: `${CLIENT_URL}/`,
+      return_url: portalReturn,
     });
 
     res.json({ url: session.url });

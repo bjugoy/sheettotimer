@@ -19,7 +19,7 @@ async function postJSON(path: string, token: string, body?: object) {
 }
 
 export async function startCheckout(plan: Exclude<Plan, 'free'>, token: string, interval: 'monthly' | 'yearly' = 'monthly'): Promise<void> {
-  const data = await postJSON('/api/billing/checkout', token, { plan, interval });
+  const data = await postJSON('/api/billing/checkout', token, { plan, interval, returnUrl: window.location.href });
   window.location.href = data.url;
 }
 
@@ -33,6 +33,6 @@ export async function syncPlanFromStripe(token: string): Promise<string | null> 
 }
 
 export async function openBillingPortal(token: string): Promise<void> {
-  const data = await postJSON('/api/billing/portal', token);
+  const data = await postJSON('/api/billing/portal', token, { returnUrl: window.location.href });
   window.location.href = data.url;
 }
