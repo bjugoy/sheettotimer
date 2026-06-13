@@ -57,15 +57,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const plan = await fetchPlan(session.user.id).catch(() => get().plan);
         set({ user: session.user, session, plan, loading: false });
       } else if (event === 'SIGNED_OUT') {
-        // Double-check before committing to sign-out — SIGNED_OUT fires spuriously
-        // when the page regains focus after a popup closes and the token refresh races.
+        // During initialization, skip entirely — getSession() below is authoritative.
+        // SIGNED_OUT can fire while Supabase is recovering an expired access token
+        // (before the refresh completes), which would cause a spurious sign-out.
+        if (get().loading) return;
+
+        // Post-init: double-check before committing to sign-out — SIGNED_OUT also
+        // fires spuriously when the page regains focus after a popup closes.
         const { data: { session: live } } = await supabase.auth.getSession()
           .catch(() => ({ data: { session: null } }));
         if (live?.user) {
           const plan = await fetchPlan(live.user.id).catch(() => get().plan);
           set({ user: live.user, session: live, plan, loading: false });
         } else {
-          clearFallback();
           set({ user: null, session: null, plan: 'free', loading: false });
         }
       }
@@ -77,7 +81,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: { session } } = await supabase.auth.getSession();
         clearFallback();
         if (session?.user) {
-          const plan = await fetchPlan(session.user.id).catch(() => 'free' as Plan);
+          const plan = await fetchPlan(session.user.id).catch(() => get().plan);
           set({ user: session.user, session, plan, loading: false });
         } else {
           // Only clear if onAuthStateChange hasn't already signed us in
