@@ -40,8 +40,30 @@ export async function verifyToken(token: string): Promise<VerifiedUser | null> {
 
 export async function deleteUser(userId: string): Promise<boolean> {
   if (!supabaseAdmin) return false;
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-  return !error;
+  try {
+    // Delete in FK dependency order so no orphaned rows remain.
+    // The service role key bypasses RLS — all rows are removed regardless
+    // of the user's own access policies.
+    const { error: eventsErr } = await supabaseAdmin
+      .from('events').delete().eq('user_id', userId);
+    if (eventsErr) throw eventsErr;
+
+    const { error: prodsErr } = await supabaseAdmin
+      .from('productions').delete().eq('user_id', userId);
+    if (prodsErr) throw prodsErr;
+
+    const { error: profileErr } = await supabaseAdmin
+      .from('profiles').delete().eq('id', userId);
+    if (profileErr) throw profileErr;
+
+    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (authErr) throw authErr;
+
+    return true;
+  } catch (err) {
+    console.error('[auth] deleteUser cascade failed:', err);
+    return false;
+  }
 }
 
 export async function getStripeCustomerId(userId: string): Promise<string | null> {
