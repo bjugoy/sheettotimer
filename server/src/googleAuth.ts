@@ -45,6 +45,29 @@ function buildClient(tokens: Tokens): {
   return { auth, getFreshTokens: () => refreshed };
 }
 
+/** Returns true if the authenticated user has edit access to the sheet.
+ *  Uses batchUpdate with no operations — Google validates write permissions
+ *  before processing, so this is a safe no-op permission probe. */
+export async function checkCanEdit(
+  tokens: Tokens,
+  spreadsheetId: string,
+): Promise<{ canEdit: boolean; freshTokens: Tokens | null }> {
+  const { auth, getFreshTokens } = buildClient(tokens);
+  const sheets = google.sheets({ version: 'v4', auth });
+  try {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [] },
+    });
+    return { canEdit: true, freshTokens: getFreshTokens() };
+  } catch (err: unknown) {
+    const code = (err as { code?: number; status?: number })?.code
+                ?? (err as { code?: number; status?: number })?.status;
+    if (code === 403) return { canEdit: false, freshTokens: getFreshTokens() };
+    throw err;
+  }
+}
+
 export async function fetchSheetData(
   tokens: Tokens,
   spreadsheetId: string,

@@ -34,7 +34,7 @@ import {
   cleanupExpiredRooms,
   addAnnouncement,
 } from './rooms';
-import { createOAuthClient, getAuthUrl, fetchSheetData, writeSheetData } from './googleAuth';
+import { createOAuthClient, getAuthUrl, checkCanEdit, fetchSheetData, writeSheetData } from './googleAuth';
 import { encryptTokens, decryptTokens } from './tokenCrypto';
 
 const app = express();
@@ -694,6 +694,12 @@ app.post('/api/sheets/fetch', async (req, res) => {
     return;
   }
   try {
+    const { canEdit, freshTokens: editFreshTokens } = await checkCanEdit(tokens, spreadsheetId);
+    if (editFreshTokens) setSessionTokens(req, editFreshTokens);
+    if (!canEdit) {
+      res.status(403).json({ error: 'You don\'t have edit access to this sheet. Open it in Google Sheets and make sure you\'re an editor.' });
+      return;
+    }
     const { headers, rows, freshTokens } = await fetchSheetData(tokens, spreadsheetId, range);
     if (freshTokens) setSessionTokens(req, freshTokens);
     res.json({ headers, rows });
