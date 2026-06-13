@@ -36,7 +36,11 @@ function UpdateBanner() {
 function RootRedirect() {
   const user    = useAuthStore(s => s.user);
   const loading = useAuthStore(s => s.loading);
-  if (loading) return null;
+  if (loading) return (
+    <div className="min-h-screen bg-warm-950 flex items-center justify-center">
+      <div className="w-5 h-5 rounded-full border-2 border-warm-700 border-t-crimson-500 animate-spin" />
+    </div>
+  );
   return <Navigate to={user ? '/dashboard' : '/landing'} replace />;
 }
 

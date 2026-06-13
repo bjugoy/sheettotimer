@@ -23,6 +23,13 @@ interface AuthState {
   refreshPlan:       () => Promise<void>;
 }
 
+// Captured at module-load time before React or Supabase can strip OAuth
+// params from the URL. Used to detect an in-flight OAuth callback so we
+// don't mark auth as "done" (loading:false, user:null) before SIGNED_IN fires.
+const _oauthCallback =
+  window.location.hash.includes('access_token') ||
+  new URLSearchParams(window.location.search).has('code');
+
 async function fetchPlan(userId: string): Promise<Plan> {
   const { data } = await supabase
     .from('profiles')
@@ -39,22 +46,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
 
   initialize: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const plan = await fetchPlan(session.user.id);
-      set({ user: session.user, session, plan, loading: false });
-    } else {
-      set({ loading: false });
-    }
+    // 6-second safety valve in case all async paths stall
+    const fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 6000);
 
+    // Register listener FIRST so no SIGNED_IN event is missed during getSession()
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
+        clearTimeout(fallback);
         const plan = await fetchPlan(session.user.id);
-        set({ user: session.user, session, plan });
-      } else {
-        set({ user: null, session: null, plan: 'free' });
+        set({ user: session.user, session, plan, loading: false });
+      } else if (!_oauthCallback) {
+        // Not an OAuth callback — a genuine null session means signed out
+        clearTimeout(fallback);
+        set({ user: null, session: null, plan: 'free', loading: false });
       }
+      // _oauthCallback + null session: this is INITIAL_SESSION firing before
+      // SIGNED_IN in Edge. Keep loading:true so the spinner stays until
+      // SIGNED_IN arrives with the real session.
     });
+
+    // During an OAuth callback the listener will handle everything; skip
+    // getSession() to avoid a race where it returns null before Supabase
+    // finishes processing the URL hash (especially slow in Edge).
+    if (!_oauthCallback) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          clearTimeout(fallback);
+          const plan = await fetchPlan(session.user.id);
+          set({ user: session.user, session, plan, loading: false });
+        }
+      } catch {
+        clearTimeout(fallback);
+        set({ loading: false });
+      }
+    }
   },
 
   signIn: async (email, password) => {

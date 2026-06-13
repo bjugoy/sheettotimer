@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Mail, Lock, User, Radio } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../utils/timeUtils';
@@ -12,6 +13,7 @@ type Mode = 'signin' | 'signup' | 'reset' | 'confirm';
 
 export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
   const { signIn, signUp, signInWithGoogle, resetPassword } = useAuthStore();
+  const navigate = useNavigate();
 
   const [mode, setMode]         = useState<Mode>(defaultMode);
   const [email, setEmail]       = useState('');
@@ -50,9 +52,10 @@ export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
     if (err) {
       setError(err);
     } else if (mode === 'signup') {
-      setMode('confirm'); // show confirmation screen without clearing the message
+      setMode('confirm');
     } else {
       onClose();
+      navigate('/dashboard', { replace: true });
     }
   };
 

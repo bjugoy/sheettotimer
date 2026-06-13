@@ -142,7 +142,7 @@ export function DashboardPage() {
               <span className="text-sm font-bold text-warm-200">SheetToTimer</span>
             </div>
             <span className="text-warm-800">·</span>
-            <button onClick={() => navigate('/landing')}
+            <button onClick={() => navigate('/landing', { replace: true })}
               className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
               Home
