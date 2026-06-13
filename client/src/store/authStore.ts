@@ -53,15 +53,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const clearFallback = () => { if (fallback) clearTimeout(fallback); };
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         clearFallback();
         const plan = await fetchPlan(session.user.id);
         set({ user: session.user, session, plan, loading: false });
-      } else if (!_oauthCallback) {
+      } else if (event === 'SIGNED_OUT') {
+        // Verify the session is genuinely gone — SIGNED_OUT can fire transiently
+        // when the page regains focus and the token refresh races (e.g. popup close).
+        const { data: { session: live } } = await supabase.auth.getSession()
+          .catch(() => ({ data: { session: null } }));
+        if (live?.user) {
+          // Session is still valid — this was a spurious event, ignore it
+          const plan = await fetchPlan(live.user.id);
+          set({ user: live.user, session: live, plan, loading: false });
+        } else {
+          clearFallback();
+          set({ user: null, session: null, plan: 'free', loading: false });
+        }
+      } else if (event === 'INITIAL_SESSION' && !_oauthCallback) {
         clearFallback();
         set({ user: null, session: null, plan: 'free', loading: false });
       }
+      // Any other event with null session (shouldn't happen) — don't sign out
     });
 
     if (!_oauthCallback) {

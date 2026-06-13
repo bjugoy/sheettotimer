@@ -50,7 +50,14 @@ export function DashboardPage() {
   const [pendingDeleteProd,  setPendingDeleteProd]  = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<string | null>(null);
 
-  useEffect(() => { if (!authLoading && !user) navigate('/landing', { replace: true }); }, [user, authLoading]);
+  useEffect(() => {
+    if (authLoading || user) return;
+    // Small grace period: SIGNED_OUT can fire transiently (e.g. after a popup
+    // closes and the page regains focus). Wait 1.5 s to let getSession() resolve
+    // before committing to redirect.
+    const t = setTimeout(() => navigate('/landing', { replace: true }), 1500);
+    return () => clearTimeout(t);
+  }, [user, authLoading]);
 
   // ── Load productions ───────────────────────────────────────────────────────
   const loadProds = useCallback(async () => {
