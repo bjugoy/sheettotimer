@@ -36,7 +36,6 @@ async function fetchPlan(userId: string): Promise<Plan> {
     .select('plan')
     .eq('id', userId)
     .single();
-  console.log('[auth] fetchPlan:', { data, error: error?.message, userId });
   return (data?.plan as Plan) ?? 'free';
 }
 
@@ -56,8 +55,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // await _initializePromise, which in some versions is still pending when
       // this callback fires. Calling them here causes a deadlock that hangs
       // getSession(), getProductions(), and any other Supabase call on the page.
-      console.log('[auth] onAuthStateChange:', event, session?.user?.email ?? 'no user', 'metadata:', JSON.stringify(session?.user?.user_metadata));
-
       if (session?.user) {
         clearFallback();
         set({ user: session.user, session, loading: false });
@@ -89,9 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (!_oauthCallback) {
       try {
-        console.log('[auth] calling getSession()...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('[auth] getSession() result:', session?.user?.email ?? 'null', error ? `error: ${error.message}` : '');
+        const { data: { session } } = await supabase.auth.getSession();
         clearFallback();
         if (session?.user) {
           const plan = await fetchPlan(session.user.id).catch(() => get().plan);
@@ -101,14 +96,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           // (e.g. TOKEN_REFRESHED fired while getSession() was awaiting).
           set(s => s.loading ? { user: null, session: null, plan: 'free', loading: false } : s);
         }
-      } catch (e) {
+      } catch {
         // Unexpected error — unblock loading without signing out.
-        console.error('[auth] getSession() threw:', e);
         clearFallback();
         set(s => s.loading ? { loading: false } : s);
       }
     } else {
-      console.log('[auth] skipping getSession() — OAuth callback detected');
     }
   },
 
