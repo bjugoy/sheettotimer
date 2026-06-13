@@ -116,11 +116,11 @@ export default function App() {
   useEffect(() => {
     if (!authUser || roomCode) return; // skip if not authenticated or already in a room
     try {
-      const raw = localStorage.getItem('stt-session');
+      const raw = sessionStorage.getItem('stt-session');
       if (!raw) return;
       const stored = JSON.parse(raw) as { code: string; name: string; createdAt: number };
       if (Date.now() - stored.createdAt > 24 * 60 * 60 * 1000) {
-        localStorage.removeItem('stt-session');
+        sessionStorage.removeItem('stt-session');
         return;
       }
       const token = getToken();

@@ -7,11 +7,11 @@ interface StoredSession { code: string; name: string; createdAt: number; }
 
 function getStoredSession(): StoredSession | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as StoredSession;
     if (Date.now() - s.createdAt > 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
       return null;
     }
     return s;
@@ -51,7 +51,7 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
   // Authenticated users are auto-rejoined from App.tsx before reaching this screen.
   const [stored, setStored] = useState<StoredSession | null>(() => !user ? getStoredSession() : null);
 
-  const dismissStored = () => { localStorage.removeItem(SESSION_KEY); setStored(null); };
+  const dismissStored = () => { sessionStorage.removeItem(SESSION_KEY); setStored(null); };
   const rejoinStored  = () => {
     if (!stored) return;
     joinRoom(stored.code, stored.name, getToken() ?? undefined);

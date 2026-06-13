@@ -13,7 +13,6 @@ export function getAuthUrl(client: InstanceType<typeof google.auth.OAuth2>): str
     access_type: 'offline',
     scope: [
       'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive.readonly',
     ],
     prompt: 'consent',
   });

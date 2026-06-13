@@ -45,6 +45,9 @@ const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
 if (isProd && !process.env.SESSION_SECRET) {
   throw new Error('[startup] SESSION_SECRET env var is required in production. Set it in your Heroku config vars.');
 }
+if (isProd && !CLIENT_URL.startsWith('https://')) {
+  console.warn('[startup] WARNING: CLIENT_URL is not HTTPS — session cookies will be transmitted insecurely:', CLIENT_URL);
+}
 
 // Support comma-separated origins and automatically include www ↔ non-www variants
 const allowedOrigins: string[] = CLIENT_URL.split(',').flatMap(raw => {
@@ -150,7 +153,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
 });
 
-// Per-socket event rate limiter (prevents announcement spam etc.)
+// Per-socket event rate limiter (announcements, etc.)
 const socketEventCounts = new Map<string, { count: number; resetAt: number }>();
 function socketAllow(socketId: string, limit: number, windowMs: number): boolean {
   const now   = Date.now();
@@ -160,6 +163,34 @@ function socketAllow(socketId: string, limit: number, windowMs: number): boolean
     return true;
   }
   if (entry.count >= limit) return false;
+  entry.count++;
+  return true;
+}
+
+// Per-socket room:join rate limiter — prevents room code brute-force
+const joinAttempts = new Map<string, { count: number; resetAt: number }>();
+function joinAllow(socketId: string): boolean {
+  const now   = Date.now();
+  const entry = joinAttempts.get(socketId);
+  if (!entry || now > entry.resetAt) {
+    joinAttempts.set(socketId, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= 10) return false; // max 10 join attempts per minute
+  entry.count++;
+  return true;
+}
+
+// Per-room announcement rate limiter — caps total throughput regardless of user count
+const roomAnnounceCounts = new Map<string, { count: number; resetAt: number }>();
+function roomAnnounceAllow(roomCode: string): boolean {
+  const now   = Date.now();
+  const entry = roomAnnounceCounts.get(roomCode);
+  if (!entry || now > entry.resetAt) {
+    roomAnnounceCounts.set(roomCode, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= 20) return false; // max 20 announcements per room per minute
   entry.count++;
   return true;
 }
@@ -205,6 +236,10 @@ io.on('connection', (socket) => {
   // ── Room join — always viewer; optional auth identifies registered users ──
   socket.on('room:join', async ({ code, name, authToken }) => {
     try {
+      if (!joinAllow(socket.id)) {
+        socket.emit('error', 'Too many join attempts. Please wait a moment.');
+        return;
+      }
       if (typeof code !== 'string' || !/^[A-Z0-9]{4,8}$/.test(code)) {
         socket.emit('error', 'Invalid room code');
         return;
@@ -278,8 +313,16 @@ io.on('connection', (socket) => {
       if (!code) { socket.emit('error', 'Only operators can modify the schedule'); return; }
       const room = getRoom(code);
       if (!room) return;
+      // Whitelist allowed keys to prevent arbitrary property injection
+      const ALLOWED: Set<string> = new Set([
+        'title','notes','durationMs','scheduledStart','scheduledEnd',
+        'status','actualStart','actualEnd',
+      ]);
+      const safeChanges = Object.fromEntries(
+        Object.entries(changes as Record<string, unknown>).filter(([k]) => ALLOWED.has(k))
+      ) as Partial<ScheduleItem>;
       const schedule = room.schedule.map(item =>
-        item.id === id ? { ...item, ...changes } : item
+        item.id === id ? { ...item, ...safeChanges } : item
       );
       const recalced = recalculate(schedule, Date.now());
       const updated  = updateRoom(code, { schedule: recalced });
@@ -392,7 +435,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ── Announcement — rate limited + HTML stripped ──────────────────────────
+  // ── Announcement — rate limited + sanitized ──────────────────────────────
   socket.on('announcement:send', ({ text }) => {
     try {
       if (!socketAllow(socket.id, 5, 10_000)) {
@@ -401,12 +444,22 @@ io.on('connection', (socket) => {
       }
       const code = getRoomForSocket(socket.id);
       if (!code) return;
+      if (!roomAnnounceAllow(code)) {
+        socket.emit('error', 'Room announcement limit reached. Please wait.');
+        return;
+      }
       const room = getRoom(code);
       if (!room) return;
-      const users     = getRoomUsers(code);
-      const sender    = users.find(u => u.id === socket.id);
-      const sanitized = String(text ?? '').replace(/<[^>]*>/g, '').slice(0, 280);
-      const ann       = addAnnouncement(code, sanitized, sender?.name ?? 'Unknown');
+      const raw = String(text ?? '').trim();
+      // Reject any HTML — don't try to sanitize, just refuse
+      if (raw.includes('<') || raw.includes('>')) {
+        socket.emit('error', 'Announcements cannot contain HTML characters');
+        return;
+      }
+      const sanitized = raw.slice(0, 280);
+      const users  = getRoomUsers(code);
+      const sender = users.find(u => u.id === socket.id);
+      const ann    = addAnnouncement(code, sanitized, sender?.name ?? 'Unknown');
       io.to(code).emit('announcement', ann);
     } catch (err) {
       console.error('[socket:announcement:send]', err);
@@ -416,6 +469,7 @@ io.on('connection', (socket) => {
   // ── Disconnect ───────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
     socketEventCounts.delete(socket.id);
+    joinAttempts.delete(socket.id);
     const code = unregisterSocket(socket.id);
     if (code) {
       leaveRoom(code, socket.id);
@@ -621,8 +675,12 @@ app.post('/api/sheets/fetch', async (req, res) => {
   }
   const tokens = { access_token: rawTokens.access_token ?? null, refresh_token: rawTokens.refresh_token ?? null };
   const { spreadsheetId, range } = req.body as { spreadsheetId: string; range?: string };
-  if (!spreadsheetId) {
+  if (!spreadsheetId || typeof spreadsheetId !== 'string') {
     res.status(400).json({ error: 'Missing spreadsheetId' });
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]{10,100}$/.test(spreadsheetId)) {
+    res.status(400).json({ error: 'Invalid spreadsheet ID format' });
     return;
   }
   try {
@@ -649,8 +707,16 @@ app.post('/api/sheets/write', async (req, res) => {
     range: string;
     values: (string | number | null)[][];
   };
-  if (!spreadsheetId || !range || !values) {
+  if (!spreadsheetId || typeof spreadsheetId !== 'string' || !range || !values) {
     res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]{10,100}$/.test(spreadsheetId)) {
+    res.status(400).json({ error: 'Invalid spreadsheet ID format' });
+    return;
+  }
+  if (!Array.isArray(values) || !values.every(Array.isArray) || values.length > 10_000) {
+    res.status(400).json({ error: 'Invalid values format' });
     return;
   }
   try {

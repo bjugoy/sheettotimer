@@ -1,5 +1,11 @@
 import type { RawRow, ColumnMapping, ColumnRole, ParseResult, ScheduleItem } from './types';
 
+// Strip leading formula-trigger characters so exported CSVs can't execute
+// formulas if opened in Excel/Sheets. Only affects the first character.
+function stripFormula(val: string): string {
+  return /^[=+\-@]/.test(val) ? `'${val}` : val;
+}
+
 // ─── Time parsing ────────────────────────────────────────────────────────────
 
 /**
@@ -252,7 +258,7 @@ export function rowsToSchedule(
     // Only retrieve the title from rows that have a time value;
     // collapse line breaks (Excel Alt+Enter) to spaces so the title is always single-line
     const rawTitle = titleKey
-      ? String(row[titleKey] ?? '').replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim()
+      ? stripFormula(String(row[titleKey] ?? '').replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim())
       : '';
     if (!rawTitle) continue;
 
@@ -306,11 +312,11 @@ export function rowsToSchedule(
     lastEnd = endMs;
     if (isNaN(durationMs)) durationMs = endMs - startMs;
 
-    const notes = notesKey ? String(row[notesKey] ?? '').trim() : undefined;
+    const notes = notesKey ? stripFormula(String(row[notesKey] ?? '').trim()) : undefined;
 
     const customFields: Record<string, string> = {};
     for (const key of customKeys) {
-      const val = String(row[key] ?? '').trim();
+      const val = stripFormula(String(row[key] ?? '').trim());
       if (val) customFields[key] = val;
     }
 

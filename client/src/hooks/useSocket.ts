@@ -49,7 +49,7 @@ export function useSocket() {
       }
       // Persist session so the operator can rejoin after a page refresh
       try {
-        localStorage.setItem('stt-session', JSON.stringify({
+        sessionStorage.setItem('stt-session', JSON.stringify({
           code:      room.code,
           name:      user.name,
           createdAt: room.createdAt,
@@ -81,7 +81,7 @@ export function useSocket() {
     socket.on('session:ended', (reason) => {
       setSessionEnded(reason);
       leaveSession();
-      try { localStorage.removeItem('stt-session'); } catch {}
+      try { sessionStorage.removeItem('stt-session'); } catch {}
     });
 
     socket.on('error', (msg) => setSocketError(msg));
