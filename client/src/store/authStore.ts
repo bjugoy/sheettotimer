@@ -50,32 +50,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
     const clearFallback = () => clearTimeout(fallback);
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      // IMPORTANT: this callback must be synchronous — no Supabase client calls
+      // (getSession, DB queries) inside here. In Supabase ≥2.x, those calls
+      // await _initializePromise, which in some versions is still pending when
+      // this callback fires. Calling them here causes a deadlock that hangs
+      // getSession(), getProductions(), and any other Supabase call on the page.
       console.log('[auth] onAuthStateChange:', event, session?.user?.email ?? 'no user', 'metadata:', JSON.stringify(session?.user?.user_metadata));
+
       if (session?.user) {
         clearFallback();
-        // Use get().plan as fallback so a failing fetchPlan doesn't overwrite
-        // a correct plan that getSession() may have already set.
-        const plan = await fetchPlan(session.user.id).catch(() => get().plan);
-        set({ user: session.user, session, plan, loading: false });
-      } else if (event === 'SIGNED_OUT') {
-        // During initialization, skip entirely — getSession() below is authoritative.
-        // SIGNED_OUT can fire while Supabase is recovering an expired access token
-        // (before the refresh completes), which would cause a spurious sign-out.
-        if (get().loading) return;
+        set({ user: session.user, session, loading: false });
+        // Fetch plan outside the callback (setTimeout exits the Supabase
+        // internal callback chain before making another Supabase call).
+        const userId = session.user.id;
+        setTimeout(async () => {
+          const plan = await fetchPlan(userId).catch(() => get().plan);
+          // Only update if this is still the same user (guard against sign-out race)
+          set(s => s.user?.id === userId ? { plan } : s);
+        }, 0);
 
-        // Post-init: double-check before committing to sign-out — SIGNED_OUT also
-        // fires spuriously when the page regains focus after a popup closes.
-        const { data: { session: live } } = await supabase.auth.getSession()
-          .catch(() => ({ data: { session: null } }));
-        if (live?.user) {
-          const plan = await fetchPlan(live.user.id).catch(() => get().plan);
-          set({ user: live.user, session: live, plan, loading: false });
-        } else {
-          set({ user: null, session: null, plan: 'free', loading: false });
-        }
+      } else if (event === 'SIGNED_OUT' && !get().loading) {
+        // Post-init only (init-phase sign-outs are handled by getSession() below).
+        // Defer the double-check outside the callback for the same reason as above.
+        setTimeout(async () => {
+          const { data: { session: live } } = await supabase.auth.getSession()
+            .catch(() => ({ data: { session: null } }));
+          if (live?.user) {
+            const plan = await fetchPlan(live.user.id).catch(() => get().plan);
+            set({ user: live.user, session: live, plan, loading: false });
+          } else {
+            set({ user: null, session: null, plan: 'free', loading: false });
+          }
+        }, 0);
       }
-      // INITIAL_SESSION with null: do nothing here — getSession() below is authoritative.
+      // INITIAL_SESSION with null: do nothing — getSession() below is authoritative.
     });
 
     if (!_oauthCallback) {
