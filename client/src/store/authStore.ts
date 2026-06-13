@@ -59,36 +59,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const plan = await fetchPlan(session.user.id);
         set({ user: session.user, session, plan, loading: false });
       } else if (event === 'SIGNED_OUT') {
-        // Verify the session is genuinely gone — SIGNED_OUT can fire transiently
-        // when the page regains focus and the token refresh races (e.g. popup close).
+        // Double-check before signing out — SIGNED_OUT fires spuriously on page
+        // focus when a popup closes and the token refresh races.
         const { data: { session: live } } = await supabase.auth.getSession()
           .catch(() => ({ data: { session: null } }));
         if (live?.user) {
-          // Session is still valid — this was a spurious event, ignore it
           const plan = await fetchPlan(live.user.id);
           set({ user: live.user, session: live, plan, loading: false });
         } else {
           clearFallback();
           set({ user: null, session: null, plan: 'free', loading: false });
         }
-      } else if (event === 'INITIAL_SESSION' && !_oauthCallback) {
-        clearFallback();
-        set({ user: null, session: null, plan: 'free', loading: false });
       }
-      // Any other event with null session (shouldn't happen) — don't sign out
+      // INITIAL_SESSION with no session: don't act here — the getSession() call
+      // below is authoritative. Acting here causes a sign-out race when the
+      // access token is expired but the refresh token is still valid.
     });
 
     if (!_oauthCallback) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        clearFallback();
         if (session?.user) {
-          clearFallback();
           const plan = await fetchPlan(session.user.id);
           set({ user: session.user, session, plan, loading: false });
+        } else {
+          set({ user: null, session: null, plan: 'free', loading: false });
         }
       } catch {
         clearFallback();
-        set({ loading: false });
+        set({ user: null, session: null, plan: 'free', loading: false });
       }
     }
   },
