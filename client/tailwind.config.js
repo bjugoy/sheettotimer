@@ -38,8 +38,8 @@ export default {
         amber:  { 600: '#5C4A18', 400: '#8A7020', 300: '#A88A2C' },
       },
       fontFamily: {
+        sans: ['Satoshi', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Mono', 'Consolas', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       animation: {
         'pulse-slow': 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite',
