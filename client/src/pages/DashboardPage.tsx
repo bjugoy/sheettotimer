@@ -16,6 +16,11 @@ import type { Production, Event } from '../lib/db';
 import { cn } from '../utils/timeUtils';
 import { ProfileModal } from '../components/ProfileModal';
 
+// Survive navigation: keep the last-loaded list so the dashboard shows
+// immediately on return instead of showing a spinner while re-fetching.
+let _prodsCache: Production[] | null = null;
+let _eventsCache: { prodId: string; events: Event[] } | null = null;
+
 export function DashboardPage() {
   const navigate    = useNavigate();
   const user        = useAuthStore(s => s.user);
@@ -36,10 +41,10 @@ export function DashboardPage() {
   );
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [prods, setProds]           = useState<Production[]>([]);
-  const [events, setEvents]         = useState<Event[]>([]);
-  const [selectedProd, setSelected] = useState<string | null>(null);
-  const [loadingProds, setLoadingProds]   = useState(true);
+  const [prods, setProds]           = useState<Production[]>(_prodsCache ?? []);
+  const [events, setEvents]         = useState<Event[]>(_eventsCache?.events ?? []);
+  const [selectedProd, setSelected] = useState<string | null>(_eventsCache?.prodId ?? null);
+  const [loadingProds, setLoadingProds]   = useState(_prodsCache === null);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [newProdName, setNewProd]   = useState('');
   const [newEventName, setNewEvent] = useState('');
@@ -61,9 +66,11 @@ export function DashboardPage() {
 
   // ── Load productions ───────────────────────────────────────────────────────
   const loadProds = useCallback(async () => {
-    setLoadingProds(true);
+    if (_prodsCache === null) setLoadingProds(true);
     try {
-      setProds(await getProductions());
+      const data = await getProductions();
+      _prodsCache = data;
+      setProds(data);
     } catch (e) { setError(`Failed to load productions: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setLoadingProds(false); }
   }, []);
@@ -72,10 +79,11 @@ export function DashboardPage() {
 
   // ── Load events when production selected ──────────────────────────────────
   useEffect(() => {
-    if (!selectedProd) { setEvents([]); return; }
+    if (!selectedProd) { setEvents([]); _eventsCache = null; return; }
+    if (_eventsCache?.prodId === selectedProd) return; // already cached
     setLoadingEvents(true);
     getEvents(selectedProd)
-      .then(setEvents)
+      .then(data => { _eventsCache = { prodId: selectedProd, events: data }; setEvents(data); })
       .catch(() => setError('Failed to load events'))
       .finally(() => setLoadingEvents(false));
   }, [selectedProd]);
@@ -88,7 +96,7 @@ export function DashboardPage() {
     setSaving(true);
     try {
       const p = await createProduction(newProdName.trim());
-      setProds(prev => [p, ...prev]);
+      setProds(prev => { _prodsCache = [p, ...prev]; return _prodsCache; });
       setSelected(p.id);
       setNewProd(''); setAddingProd(false);
     } catch (e) { setError(`Failed to create production: ${e instanceof Error ? e.message : String(e)}`); }
@@ -103,8 +111,8 @@ export function DashboardPage() {
     setPendingDeleteProd(null);
     try {
       await deleteProduction(id);
-      setProds(prev => prev.filter(p => p.id !== id));
-      setEvents(prev => prev.filter(e => e.production_id !== id));
+      setProds(prev => { _prodsCache = prev.filter(p => p.id !== id); return _prodsCache; });
+      setEvents(prev => { const next = prev.filter(e => e.production_id !== id); if (_eventsCache?.prodId === id) _eventsCache = null; return next; });
       if (selectedProd === id) setSelected(null);
     } catch { setError('Failed to delete production'); }
   };
@@ -114,7 +122,7 @@ export function DashboardPage() {
     setSaving(true);
     try {
       const e = await createEvent(selectedProd, newEventName.trim());
-      setEvents(prev => [...prev, e]);
+      setEvents(prev => { const next = [...prev, e]; if (_eventsCache?.prodId === selectedProd) _eventsCache = { prodId: selectedProd, events: next }; return next; });
       setNewEvent(''); setAddingEvent(false);
     } catch { setError('Failed to create event'); }
     finally { setSaving(false); }
@@ -128,7 +136,7 @@ export function DashboardPage() {
     setPendingDeleteEvent(null);
     try {
       await deleteEvent(id);
-      setEvents(prev => prev.filter(e => e.id !== id));
+      setEvents(prev => { const next = prev.filter(e => e.id !== id); if (_eventsCache) _eventsCache = { ..._eventsCache, events: next }; return next; });
     } catch { setError('Failed to delete event'); }
   };
 
