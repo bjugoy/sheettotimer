@@ -55,7 +55,18 @@ export default function App() {
   // If coming from dashboard or landing "try for free", skip the join screen
   const fromDashboard = locState.from === 'dashboard';
   const wantsJoin     = !!locState.joinCode;
-  const initialView: AppView = wantsJoin ? 'join' : (fromDashboard || items.length > 0) ? 'load' : 'join';
+  const hasStoredSession = (() => {
+    try {
+      const raw = sessionStorage.getItem('stt-session');
+      if (!raw) return false;
+      const { createdAt } = JSON.parse(raw) as { createdAt: number };
+      return Date.now() - createdAt <= 24 * 60 * 60 * 1000;
+    } catch { return false; }
+  })();
+  const initialView: AppView = wantsJoin ? 'join'
+    : hasStoredSession ? 'timer'
+    : (fromDashboard || items.length > 0) ? 'load'
+    : 'join';
 
   const [view, setView]             = useState<AppView>(initialView);
   // True while we're resolving which event to load — prevents stale persisted
