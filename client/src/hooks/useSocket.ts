@@ -44,7 +44,8 @@ export function useSocket() {
     });
 
     socket.on('room:joined', ({ room, user }) => {
-      setRoom(room.code);
+      // Set items BEFORE roomCode so the view-transition effect in App.tsx
+      // sees the correct items.length when it fires on roomCode change.
       setUser(user);
       if (room.schedule.length > 0) {
         setItems(recalculate(room.schedule, Date.now()));
@@ -53,6 +54,9 @@ export function useSocket() {
         const loaded = useScheduleStore.getState().items;
         if (loaded.length > 0) socketRef.current.emit('schedule:set', { schedule: loaded, _csrf: csrfTokenRef.current });
       }
+      // Set roomCode last — by this point items/user are already in the store,
+      // so App.tsx's useEffect([roomCode]) sees the correct state.
+      setRoom(room.code);
       // Persist session so the operator can rejoin after a page refresh
       try {
         sessionStorage.setItem('stt-session', JSON.stringify({

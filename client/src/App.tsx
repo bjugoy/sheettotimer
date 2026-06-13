@@ -87,7 +87,12 @@ export default function App() {
   }, [items.length, eventSwitching]);
 
   useEffect(() => {
-    if (roomCode && view === 'join') setView(items.length > 0 ? 'timer' : 'load');
+    if (!roomCode || view !== 'join') return;
+    // Operators with no schedule go to load (upload screen).
+    // Viewers always go to timer — they wait for the operator to push a schedule.
+    if (items.length > 0) setView('timer');
+    else if (isOperator) setView('load');
+    else setView('timer');
   }, [roomCode]);
 
   useEffect(() => {
@@ -205,7 +210,7 @@ export default function App() {
 
   const goBack = () => {
     if (fromDashboard) navigate('/dashboard');
-    else navigate('/landing');
+    else setView('join');
   };
 
   if (view === 'teleprompter') return <TeleprompterView onClose={() => setView('timer')} />;
@@ -230,7 +235,7 @@ export default function App() {
         onGoogleAuth={startOAuth}
         canUseGoogleSheets={features.canUseGoogleSheets}
         onBack={goBack}
-        backLabel={fromDashboard ? '← Dashboard' : '← Home'}
+        backLabel={fromDashboard ? '← Dashboard' : '← Join Room'}
         onScheduleLoaded={locState.eventId
           ? (loaded) => saveEventSchedule(locState.eventId!, loaded).catch(console.error)
           : undefined}
