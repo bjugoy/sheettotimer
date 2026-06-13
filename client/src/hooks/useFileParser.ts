@@ -5,6 +5,16 @@ import { detectColumnMapping, detectHeaderRow } from '@program-timer/shared';
 
 const PREVIEW_ROWS = 20;
 
+const MAX_FILE_SIZE  = 10 * 1024 * 1024; // 10 MB — zip-bomb guard
+const MAX_ROWS       = 5_000;
+const ALLOWED_TYPES  = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.oasis.opendocument.spreadsheet',                    // .ods
+  'text/csv',
+  'application/csv',
+  'text/plain', // some OS/browsers report .csv as text/plain
+]);
+
 export function useFileParser() {
   const [parseResult, setParseResult]     = useState<ParseResult | null>(null);
   const [error, setError]                 = useState<string | null>(null);
@@ -54,6 +64,7 @@ export function useFileParser() {
     });
 
     if (aoa.length < 2) throw new Error('Sheet appears to be empty or has no data rows');
+    if (aoa.length > MAX_ROWS) throw new Error(`Sheet has too many rows (${aoa.length.toLocaleString()}). Maximum allowed is ${MAX_ROWS.toLocaleString()}.`);
 
     aoaRef.current = aoa;
     const detected = detectHeaderRow(aoa);
@@ -79,6 +90,13 @@ export function useFileParser() {
     setLoading(true);
     setError(null);
     try {
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 10 MB.`);
+      }
+      if (file.type && !ALLOWED_TYPES.has(file.type)) {
+        throw new Error(`Unsupported file type "${file.type}". Please upload an .xlsx, .ods, or .csv file.`);
+      }
+
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array', cellDates: false, raw: true });
 
