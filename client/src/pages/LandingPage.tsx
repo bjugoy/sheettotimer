@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Radio, Check, ArrowRight, Users, Clock, Zap } from 'lucide-react';
 import { MiniTimerDemo } from '../components/MiniTimerDemo';
@@ -45,9 +45,21 @@ const PLANS = [
 export function LandingPage() {
   const navigate   = useNavigate();
   const user       = useAuthStore(s => s.user);
+  const loading    = useAuthStore(s => s.loading);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Safety net: if auth was still in-flight when we mounted (e.g. Edge sent
+  // us here mid-OAuth before SIGNED_IN fired), redirect once it resolves.
+  // Does NOT trigger for users who navigated here intentionally while already
+  // logged in, because loading is false by the time they arrive.
+  const wasLoadingOnMount = useRef(loading);
+  useEffect(() => {
+    if (wasLoadingOnMount.current && !loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [loading, user]);
 
   const openSignUp = () => { setAuthMode('signup'); setShowAuth(true); };
   const openSignIn = () => { setAuthMode('signin'); setShowAuth(true); };

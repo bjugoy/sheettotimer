@@ -46,38 +46,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
 
   initialize: async () => {
-    // 6-second safety valve in case all async paths stall
-    const fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 6000);
+    // For OAuth callbacks we trust Supabase's own internal timeout — no
+    // artificial deadline here. Edge's Web Locks can be throttled by
+    // Enhanced Tracking Prevention after cross-site redirects and may
+    // take 10-15s to resolve; cutting it off at 6s sent users to /landing
+    // before SIGNED_IN ever fired.
+    // For regular page loads getSession() is fast, so a short fallback is
+    // still useful in case of a network hiccup.
+    let fallback: ReturnType<typeof setTimeout> | null = null;
+    if (!_oauthCallback) {
+      fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
+    }
+
+    const clearFallback = () => { if (fallback) clearTimeout(fallback); };
 
     // Register listener FIRST so no SIGNED_IN event is missed during getSession()
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        clearTimeout(fallback);
+        clearFallback();
         const plan = await fetchPlan(session.user.id);
         set({ user: session.user, session, plan, loading: false });
       } else if (!_oauthCallback) {
         // Not an OAuth callback — a genuine null session means signed out
-        clearTimeout(fallback);
+        clearFallback();
         set({ user: null, session: null, plan: 'free', loading: false });
       }
-      // _oauthCallback + null session: this is INITIAL_SESSION firing before
-      // SIGNED_IN in Edge. Keep loading:true so the spinner stays until
-      // SIGNED_IN arrives with the real session.
+      // _oauthCallback + null session: INITIAL_SESSION firing before SIGNED_IN.
+      // Keep loading:true — the spinner holds until the real session arrives.
     });
 
-    // During an OAuth callback the listener will handle everything; skip
-    // getSession() to avoid a race where it returns null before Supabase
-    // finishes processing the URL hash (especially slow in Edge).
+    // During an OAuth callback the listener handles everything; skip
+    // getSession() to avoid the race where it returns null before Supabase
+    // finishes processing the URL hash.
     if (!_oauthCallback) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          clearTimeout(fallback);
+          clearFallback();
           const plan = await fetchPlan(session.user.id);
           set({ user: session.user, session, plan, loading: false });
         }
       } catch {
-        clearTimeout(fallback);
+        clearFallback();
         set({ loading: false });
       }
     }
