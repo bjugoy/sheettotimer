@@ -551,11 +551,11 @@ app.get('/auth/google/callback', async (req, res) => {
         console.error('[auth/google/callback] session save failed:', err);
         res.redirect(`${CLIENT_URL}/dashboard?auth=error`);
       } else {
-        res.redirect(`${CLIENT_URL}/dashboard?auth=success`);
+        res.redirect(`${CLIENT_URL}/app?auth=success`);
       }
     });
   } catch (e) {
-    res.redirect(`${CLIENT_URL}/dashboard?auth=error`);
+    res.redirect(`${CLIENT_URL}/app?auth=error`);
   }
 });
 

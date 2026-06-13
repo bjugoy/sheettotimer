@@ -19,6 +19,7 @@ import { ProfileModal } from '../components/ProfileModal';
 export function DashboardPage() {
   const navigate    = useNavigate();
   const user        = useAuthStore(s => s.user);
+  const authLoading = useAuthStore(s => s.loading);
   const plan        = useAuthStore(s => s.plan);
   const features    = getPlanFeatures(plan);
   const badgeCls    = PLAN_BADGE_COLOR[plan];
@@ -49,7 +50,7 @@ export function DashboardPage() {
   const [pendingDeleteProd,  setPendingDeleteProd]  = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<string | null>(null);
 
-  useEffect(() => { if (!user) navigate('/landing', { replace: true }); }, [user]);
+  useEffect(() => { if (!authLoading && !user) navigate('/landing', { replace: true }); }, [user, authLoading]);
 
   // ── Load productions ───────────────────────────────────────────────────────
   const loadProds = useCallback(async () => {
