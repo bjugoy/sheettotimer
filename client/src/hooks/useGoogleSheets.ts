@@ -3,11 +3,13 @@ import type { ScheduleItem } from '@program-timer/shared';
 import { formatTime } from '../utils/timeUtils';
 import { apiUrl } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
+import { useScheduleStore } from '../store/scheduleStore';
 
 export function useGoogleSheets() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const getToken = useAuthStore(s => s.getToken);
+  const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
 
   const fetchSheet = useCallback(async (spreadsheetId: string) => {
     const token = getToken();
@@ -73,8 +75,18 @@ export function useGoogleSheets() {
   }, []);
 
   const startOAuth = useCallback(() => {
-    window.location.href = apiUrl('/auth/google');
-  }, []);
+    const w = 500, h = 640;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    window.open(apiUrl('/auth/google'), 'google-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    const handleMessage = (event: MessageEvent<{ type?: string; success?: boolean }>) => {
+      if (event.data?.type !== 'google-auth') return;
+      window.removeEventListener('message', handleMessage);
+      if (event.data.success) checkAuthStatus().then(setGoogleAuthenticated);
+    };
+    window.addEventListener('message', handleMessage);
+    setTimeout(() => window.removeEventListener('message', handleMessage), 5 * 60 * 1000);
+  }, [checkAuthStatus, setGoogleAuthenticated]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(() => {});

@@ -533,12 +533,22 @@ app.get('/auth/google', (_req, res) => {
   res.redirect(getAuthUrl(client));
 });
 
+function oauthPopupPage(success: boolean): string {
+  const msg      = JSON.stringify({ type: 'google-auth', success });
+  const fallback = success ? `${CLIENT_URL}/app?auth=success` : `${CLIENT_URL}/app?auth=error`;
+  return `<!doctype html><html><body><script>
+    try {
+      if (window.opener) {
+        window.opener.postMessage(${msg}, ${JSON.stringify(CLIENT_URL)});
+        window.close();
+      } else { window.location.href = ${JSON.stringify(fallback)}; }
+    } catch(e) { window.location.href = ${JSON.stringify(fallback)}; }
+  </script></body></html>`;
+}
+
 app.get('/auth/google/callback', async (req, res) => {
   const code = req.query.code as string;
-  if (!code) {
-    res.status(400).json({ error: 'Missing code' });
-    return;
-  }
+  if (!code) { res.send(oauthPopupPage(false)); return; }
   try {
     const client = createOAuthClient();
     const { tokens } = await client.getToken(code);
@@ -547,15 +557,11 @@ app.get('/auth/google/callback', async (req, res) => {
       refresh_token: tokens.refresh_token ?? null,
     });
     req.session.save((err) => {
-      if (err) {
-        console.error('[auth/google/callback] session save failed:', err);
-        res.redirect(`${CLIENT_URL}/dashboard?auth=error`);
-      } else {
-        res.redirect(`${CLIENT_URL}/app?auth=success`);
-      }
+      if (err) console.error('[auth/google/callback] session save failed:', err);
+      res.send(oauthPopupPage(!err));
     });
   } catch (e) {
-    res.redirect(`${CLIENT_URL}/app?auth=error`);
+    res.send(oauthPopupPage(false));
   }
 });
 
