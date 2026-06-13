@@ -37,6 +37,13 @@ function UpdateBanner() {
 function RootRedirect() {
   const user    = useAuthStore(s => s.user);
   const loading = useAuthStore(s => s.loading);
+
+  // Room invite links: /?room=CODE — send everyone straight to /app regardless of auth state
+  const roomCode = new URLSearchParams(window.location.search).get('room');
+  if (roomCode) {
+    return <Navigate to="/app" state={{ joinCode: roomCode, joinName: '' }} replace />;
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-warm-950 flex items-center justify-center">
       <div className="w-5 h-5 rounded-full border-2 border-warm-700 border-t-crimson-500 animate-spin" />

@@ -253,10 +253,10 @@ export default function App() {
         <h2 className="text-lg font-semibold text-warm-300">Session ended</h2>
         <p className="text-sm text-warm-500 max-w-sm">{sessionEndedReason}</p>
         <button
-          onClick={() => { leaveSession(); navigate('/dashboard', { replace: true }); }}
+          onClick={() => { leaveSession(); navigate(authUser ? '/dashboard' : '/landing', { replace: true }); }}
           className="mt-2 px-5 py-2.5 bg-crimson-800/60 hover:bg-crimson-700/60
             border border-crimson-700/50 rounded-lg text-sm text-warm-100 transition-colors">
-          Go to dashboard
+          {authUser ? 'Go to dashboard' : 'Go home'}
         </button>
       </div>
     );
