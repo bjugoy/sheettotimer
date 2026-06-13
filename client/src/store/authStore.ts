@@ -30,6 +30,24 @@ const _oauthCallback =
   window.location.hash.includes('access_token') ||
   new URLSearchParams(window.location.search).has('code');
 
+// Read the Supabase session synchronously from localStorage at module-load time.
+// This eliminates the flash-of-null-user on refresh: the store is pre-seeded
+// with the stored user before any async initialization runs.
+function _readStoredSession(): Session | null {
+  try {
+    const key = Object.keys(localStorage).find(
+      k => k.startsWith('sb-') && k.endsWith('-auth-token')
+    );
+    if (!key) return null;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed?.access_token && parsed?.user) ? parsed as Session : null;
+  } catch { return null; }
+}
+
+const _storedSession = _oauthCallback ? null : _readStoredSession();
+
 async function fetchPlan(userId: string): Promise<Plan> {
   const { data } = await supabase
     .from('profiles')
@@ -40,12 +58,20 @@ async function fetchPlan(userId: string): Promise<Plan> {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user:    null,
-  session: null,
+  // Pre-seed from localStorage so the user is never null on a page refresh.
+  // initialize() will verify and refresh the token in the background.
+  user:    _storedSession?.user ?? null,
+  session: _storedSession       ?? null,
   plan:    'free',
   loading: true,
 
   initialize: async () => {
+    // No stored session and no OAuth callback — definitely not logged in.
+    if (!_storedSession && !_oauthCallback) {
+      set({ loading: false });
+      return;
+    }
+
     let fallback: ReturnType<typeof setTimeout> | null = null;
     if (!_oauthCallback) {
       fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
@@ -56,7 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         clearFallback();
-        const plan = await fetchPlan(session.user.id);
+        const plan = await fetchPlan(session.user.id).catch(() => 'free' as Plan);
         set({ user: session.user, session, plan, loading: false });
       } else if (event === 'SIGNED_OUT') {
         // Double-check before signing out — SIGNED_OUT fires spuriously on page
@@ -64,16 +90,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: { session: live } } = await supabase.auth.getSession()
           .catch(() => ({ data: { session: null } }));
         if (live?.user) {
-          const plan = await fetchPlan(live.user.id);
+          const plan = await fetchPlan(live.user.id).catch(() => 'free' as Plan);
           set({ user: live.user, session: live, plan, loading: false });
         } else {
           clearFallback();
           set({ user: null, session: null, plan: 'free', loading: false });
         }
       }
-      // INITIAL_SESSION with no session: don't act here — the getSession() call
-      // below is authoritative. Acting here causes a sign-out race when the
-      // access token is expired but the refresh token is still valid.
+      // INITIAL_SESSION with null: don't act — getSession() below is authoritative.
     });
 
     if (!_oauthCallback) {
@@ -81,14 +105,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: { session } } = await supabase.auth.getSession();
         clearFallback();
         if (session?.user) {
-          const plan = await fetchPlan(session.user.id);
+          const plan = await fetchPlan(session.user.id).catch(() => 'free' as Plan);
           set({ user: session.user, session, plan, loading: false });
         } else {
-          set({ user: null, session: null, plan: 'free', loading: false });
+          // Session expired/revoked — only clear if we haven't already been
+          // signed in by a concurrent INITIAL_SESSION/SIGNED_IN event.
+          set(s => s.loading ? { user: null, session: null, plan: 'free', loading: false } : s);
         }
       } catch {
+        // Network error during token refresh — unblock loading but keep the
+        // stored user rather than signing them out for a transient failure.
         clearFallback();
-        set({ user: null, session: null, plan: 'free', loading: false });
+        set({ loading: false });
       }
     }
   },
