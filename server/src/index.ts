@@ -746,18 +746,22 @@ app.post('/api/sheets/fetch', async (req, res) => {
     return;
   }
   try {
-    const { canEdit, freshTokens: editFreshTokens } = await checkCanEdit(tokens, spreadsheetId);
-    if (editFreshTokens) setSessionTokens(req, editFreshTokens);
-    if (!canEdit) {
-      res.status(403).json({ error: 'You don\'t have edit access to this sheet. Open it in Google Sheets and make sure you\'re an editor.' });
-      return;
-    }
     const { headers, rows, freshTokens } = await fetchSheetData(tokens, spreadsheetId, range);
     if (freshTokens) setSessionTokens(req, freshTokens);
     res.json({ headers, rows });
   } catch (e: unknown) {
     console.error('[sheets/fetch]', e);
-    res.status(500).json({ error: 'Failed to fetch sheet data. Check your Google Sheets connection.' });
+    const code = (e as { code?: number; status?: number })?.code
+              ?? (e as { code?: number; status?: number })?.status;
+    if (code === 403) {
+      res.status(403).json({ error: 'You don\'t have access to this sheet. Make sure it\'s shared with your Google account.' });
+    } else if (code === 404) {
+      res.status(404).json({ error: 'Spreadsheet not found. Check the URL or ID and try again.' });
+    } else if (code === 401) {
+      res.status(401).json({ error: 'Google session expired. Please reconnect your Google account.' });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch sheet data. Check your Google Sheets connection.' });
+    }
   }
 });
 
