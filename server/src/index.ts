@@ -534,16 +534,11 @@ app.get('/auth/google', (_req, res) => {
 });
 
 function oauthPopupPage(success: boolean): string {
-  const msg      = JSON.stringify({ type: 'google-auth', success });
-  const fallback = success ? `${CLIENT_URL}/app?auth=success` : `${CLIENT_URL}/app?auth=error`;
-  return `<!doctype html><html><body><script>
-    try {
-      if (window.opener) {
-        window.opener.postMessage(${msg}, ${JSON.stringify(CLIENT_URL)});
-        window.close();
-      } else { window.location.href = ${JSON.stringify(fallback)}; }
-    } catch(e) { window.location.href = ${JSON.stringify(fallback)}; }
-  </script></body></html>`;
+  const label = success ? 'Google Sheets connected!' : 'Connection failed.';
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body>
+  <script>window.close();</script>
+  <p style="font-family:sans-serif;text-align:center;margin-top:60px">${label} You can close this window.</p>
+  </body></html>`;
 }
 
 app.get('/auth/google/callback', async (req, res) => {

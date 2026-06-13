@@ -78,14 +78,15 @@ export function useGoogleSheets() {
     const w = 500, h = 640;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
     const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
-    window.open(apiUrl('/auth/google'), 'google-oauth', `width=${w},height=${h},left=${left},top=${top}`);
-    const handleMessage = (event: MessageEvent<{ type?: string; success?: boolean }>) => {
-      if (event.data?.type !== 'google-auth') return;
-      window.removeEventListener('message', handleMessage);
-      if (event.data.success) checkAuthStatus().then(setGoogleAuthenticated);
-    };
-    window.addEventListener('message', handleMessage);
-    setTimeout(() => window.removeEventListener('message', handleMessage), 5 * 60 * 1000);
+    const popup = window.open(apiUrl('/auth/google'), 'google-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    if (!popup) return;
+    const poll = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(poll);
+        checkAuthStatus().then(setGoogleAuthenticated);
+      }
+    }, 500);
+    setTimeout(() => { clearInterval(poll); if (!popup.closed) popup.close(); }, 5 * 60 * 1000);
   }, [checkAuthStatus, setGoogleAuthenticated]);
 
   const disconnect = useCallback(async (): Promise<void> => {
