@@ -14,7 +14,7 @@ const PLANS = [
     yearly:  { price: '€0', period: '', savings: '' },
     color: 'border-warm-700/50',
     badge: '',
-    features: ['Upload & run timer', 'Save productions & events', 'Schedule editor', 'Unlimited schedule rows'],
+    features: ['Upload & run timer', 'Schedule editor', 'Unlimited schedule rows', 'Local only — no saving, no rooms'],
     cta: 'Try for free',
     ctaCls: 'bg-warm-800 hover:bg-warm-700 text-warm-200 border border-warm-700',
   },
@@ -25,7 +25,7 @@ const PLANS = [
     yearly:  { price: '€24.99', period: '/yr', savings: 'Save 58%' },
     color: 'border-amber-700/50',
     badge: 'text-amber-300',
-    features: ['Everything in Free', 'Connect Google Sheets', 'Room for 5 devices', 'Presenter screen'],
+    features: ['Everything in Free', 'Save productions & events', 'Connect Google Sheets', 'Room for 5 devices', 'Presenter screen'],
     cta: 'Get started',
     ctaCls: 'bg-amber-800/60 hover:bg-amber-700/60 text-amber-100 border border-amber-700/60',
   },
@@ -57,7 +57,13 @@ export function LandingPage() {
   const wasLoadingOnMount = useRef(loading);
   useEffect(() => {
     if (wasLoadingOnMount.current && !loading && user) {
-      navigate('/dashboard', { replace: true });
+      const isNew = sessionStorage.getItem('stt-new-signup');
+      if (isNew) {
+        sessionStorage.removeItem('stt-new-signup');
+        navigate('/paywall', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
   }, [loading, user]);
 

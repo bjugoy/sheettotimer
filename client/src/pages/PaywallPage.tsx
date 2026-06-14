@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, Radio, Loader2 } from 'lucide-react';
+import { Check, Radio, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { getPlanFeatures, PLAN_BADGE_COLOR } from '../lib/plans';
 import type { Plan } from '../lib/plans';
@@ -31,7 +31,7 @@ const STATIC_PLANS: {
     color:    'border-warm-700/50',
     labelCls: 'text-warm-500',
     ctaCls:   'bg-warm-800 hover:bg-warm-700 text-warm-200 border border-warm-700',
-    features: ['Upload & run timer', 'Unlimited rows', 'Local only — no rooms'],
+    features: ['Upload & run timer', 'Unlimited rows', 'Local only — no rooms, no saving'],
   },
   {
     id: 'premium1',
@@ -43,7 +43,7 @@ const STATIC_PLANS: {
     color:    'border-amber-700/50',
     labelCls: 'text-amber-300',
     ctaCls:   'bg-amber-800/60 hover:bg-amber-700/60 text-amber-100 border border-amber-700/60',
-    features: ['Everything in Free', 'Google Sheets sync', 'Room for 5 devices', 'Presenter screen', 'Save events & days'],
+    features: ['Everything in Free', 'Save productions & events', 'Google Sheets sync', 'Room for 5 devices', 'Presenter screen'],
     highlight: true,
   },
   {
@@ -162,9 +162,18 @@ export function PaywallPage() {
 
       {/* Header */}
       <header className="flex items-center justify-between px-8 h-14 border-b border-warm-800/40">
-        <div className="flex items-center gap-2">
-          <Radio className="w-4 h-4 text-crimson-400" />
-          <span className="text-sm font-bold text-warm-100">SheetToTimer</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(user ? '/dashboard' : '/landing')}
+            className="flex items-center gap-1.5 text-warm-600 hover:text-warm-300 transition-colors text-sm">
+            <ArrowLeft className="w-4 h-4" />
+            {user ? 'Dashboard' : 'Back'}
+          </button>
+          <span className="text-warm-800">·</span>
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-crimson-400" />
+            <span className="text-sm font-bold text-warm-100">SheetToTimer</span>
+          </div>
         </div>
         {user && (
           <div className="flex items-center gap-2">

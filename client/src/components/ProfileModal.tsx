@@ -12,9 +12,9 @@ interface Props {
 }
 
 const PLAN_DESCRIPTION = {
-  free:     'Upload · Save events · Editor',
-  premium1: 'Google Sheets · Room for 5 · Presenter',
-  premium2: 'Google Sheets · Editor · Room for 15 · Presenter · Custom columns',
+  free:     'Upload · Timer · Editor · Local only',
+  premium1: 'Save events · Google Sheets · Room for 5 · Presenter',
+  premium2: 'Save events · Google Sheets · Room for 15 · Presenter · Custom columns',
 } as const;
 
 export function ProfileModal({ onClose }: Props) {

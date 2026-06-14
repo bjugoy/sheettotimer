@@ -248,8 +248,37 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* ── Split panel ───────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex min-h-0">
+      {/* ── Free plan: upload-only view ──────────────────────────────────────── */}
+      {!features.canSaveEvents && (
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
+          <div className="w-full max-w-sm space-y-5 text-center">
+            <div className="bg-amber-900/20 border border-amber-800/30 rounded-xl px-5 py-4">
+              <p className="text-sm font-medium text-amber-200 mb-1">Schedules are not saved on the Free plan</p>
+              <p className="text-xs text-amber-400/80 leading-relaxed">
+                Your timer runs locally in this browser. When you close the tab or start a new session,
+                your schedule will not be saved.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/app')}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-crimson-800/60
+                hover:bg-crimson-700/60 border border-crimson-700/50 text-warm-100 font-medium
+                rounded-xl transition-colors text-sm">
+              Upload schedule &amp; run timer
+            </button>
+            <p className="text-xs text-warm-700">
+              Want to save productions and events?{' '}
+              <button onClick={() => navigate('/paywall')}
+                className="text-crimson-400 hover:text-crimson-300 transition-colors">
+                Upgrade to Pro
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Split panel (Pro / Studio) ────────────────────────────────────────── */}
+      {features.canSaveEvents && <div className="flex-1 flex min-h-0">
 
         {/* Productions sidebar */}
         <aside className="w-64 shrink-0 flex flex-col border-r border-warm-800/40 bg-warm-900/30">
@@ -451,7 +480,7 @@ export function DashboardPage() {
             </div>
           )}
         </main>
-      </div>
+      </div>}
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
 

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Radio, ArrowLeft } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 type Lang = 'en' | 'de';
 
 export function PrivacyPolicyPage() {
   const navigate = useNavigate();
+  const user     = useAuthStore(s => s.user);
   const [lang, setLang] = useState<Lang>('en');
 
   return (
@@ -14,11 +16,11 @@ export function PrivacyPolicyPage() {
       <header className="sticky top-0 z-10 flex items-center justify-between px-6 h-12
         border-b border-warm-800/50 bg-warm-950/90 backdrop-blur">
         <button
-          onClick={() => navigate('/landing')}
+          onClick={() => navigate(user ? '/dashboard' : '/landing')}
           className="flex items-center gap-2 text-warm-500 hover:text-warm-200 transition-colors text-sm">
           <ArrowLeft className="w-4 h-4" />
           <Radio className="w-4 h-4" />
-          <span className="font-semibold tracking-wide">SheetToTimer</span>
+          <span className="font-semibold tracking-wide">{user ? 'Dashboard' : 'SheetToTimer'}</span>
         </button>
         <div className="flex items-center gap-1 bg-warm-900 border border-warm-800 rounded-lg p-0.5">
           <button

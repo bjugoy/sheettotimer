@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PaywallPage } from './pages/PaywallPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { useAuthStore } from './store/authStore';
@@ -49,7 +50,15 @@ function RootRedirect() {
       <div className="w-5 h-5 rounded-full border-2 border-warm-700 border-t-crimson-500 animate-spin" />
     </div>
   );
-  return <Navigate to={user ? '/dashboard' : '/landing'} replace />;
+  if (user) {
+    const isNew = sessionStorage.getItem('stt-new-signup');
+    if (isNew) {
+      sessionStorage.removeItem('stt-new-signup');
+      return <Navigate to="/paywall" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Navigate to="/landing" replace />;
 }
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -90,6 +99,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/landing"   element={<LandingPage />} />
           <Route path="/app"       element={<App />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/paywall"    element={<PaywallPage />} />
           <Route path="/privacy"    element={<PrivacyPolicyPage />} />
           <Route path="/terms"      element={<TermsOfServicePage />} />
           <Route path="*"          element={<NotFoundPage />} />
