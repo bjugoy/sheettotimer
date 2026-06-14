@@ -14,10 +14,7 @@ import { useAuthStore } from './store/authStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
 import { syncPlanFromStripe } from './lib/billing';
 import { CookieBanner } from './components/CookieBanner';
-import { inject } from '@vercel/analytics';
 import './index.css';
-
-inject();
 
 function UpdateBanner() {
   const updateAvailable = useUpdateCheck();
