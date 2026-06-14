@@ -64,8 +64,9 @@ export default function App() {
     } catch { return false; }
   })();
   const initialView: AppView = wantsJoin ? 'join'
+    : fromDashboard ? 'load'        // dashboard nav always starts at load/upload
     : hasStoredSession ? 'timer'
-    : (fromDashboard || items.length > 0) ? 'load'
+    : items.length > 0 ? 'load'
     : 'join';
 
   const [view, setView]             = useState<AppView>(initialView);

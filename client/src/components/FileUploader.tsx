@@ -56,64 +56,105 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
         {tipsOpen && (
           <div className="px-4 py-4 bg-warm-900/40 space-y-4">
 
-            {/* Required — prominent */}
+            {/* Required */}
             <div>
-              <p className="text-[10px] font-bold text-crimson-400 uppercase tracking-wider mb-2.5">
-                Required — your sheet must have both of these
+              <p className="text-[10px] font-bold text-crimson-400 uppercase tracking-wider mb-3">
+                Required — pick one of these layouts
               </p>
-              <div className="space-y-2">
 
-                {/* Title */}
-                <div className="flex items-center gap-3 bg-warm-800/50 border border-warm-700/50
-                  rounded-lg px-3 py-2.5">
-                  <span className="text-lg">📋</span>
-                  <div>
-                    <p className="text-sm font-semibold text-warm-100">Item / Title column</p>
-                    <p className="text-[11px] text-warm-500 mt-0.5">
-                      The name of each show item — any text column
-                    </p>
+              <div className="space-y-3">
+
+                {/* Option A — range in one cell */}
+                <div className="rounded-lg border border-warm-700/50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-crimson-950/60 border-b border-warm-700/50">
+                    <span className="text-[10px] font-bold text-crimson-300 uppercase tracking-wider">Option A</span>
+                    <span className="text-[11px] text-warm-400">— time range in one cell</span>
                   </div>
+                  <table className="w-full text-[11px] font-mono">
+                    <thead>
+                      <tr className="bg-warm-800/60">
+                        <th className="text-left px-3 py-1.5 text-warm-400 font-semibold border-r border-warm-700/40">Item</th>
+                        <th className="text-left px-3 py-1.5 text-crimson-300 font-semibold">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-warm-900/40">
+                      <tr className="border-t border-warm-800/40">
+                        <td className="px-3 py-1.5 text-warm-300 border-r border-warm-700/40">Opening remarks</td>
+                        <td className="px-3 py-1.5 text-warm-200">9:00 – 9:15</td>
+                      </tr>
+                      <tr className="border-t border-warm-800/40">
+                        <td className="px-3 py-1.5 text-warm-300 border-r border-warm-700/40">Keynote</td>
+                        <td className="px-3 py-1.5 text-warm-200">9:15 – 10:00</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
 
-                {/* Time — 3 options */}
-                <div className="bg-warm-800/50 border border-warm-700/50 rounded-lg px-3 py-2.5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-lg">🕐</span>
-                    <p className="text-sm font-semibold text-warm-100">
-                      Time info — <span className="text-warm-400 font-normal text-xs">any one of these three:</span>
-                    </p>
+                {/* Option B — start + end */}
+                <div className="rounded-lg border border-warm-700/50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-950/40 border-b border-warm-700/50">
+                    <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">Option B</span>
+                    <span className="text-[11px] text-warm-400">— separate start and end columns</span>
                   </div>
-                  <div className="space-y-2 pl-9">
-                    {[
-                      {
-                        label: 'Range in one cell',
-                        example: '9:00–10:00 · 9:00am–10:00pm · 9:00 AM – 10:00 PM',
-                        color: 'text-crimson-300',
-                      },
-                      {
-                        label: 'Start column + End column',
-                        example: 'Start: 9:00   |   End: 10:00',
-                        color: 'text-amber-300',
-                      },
-                      {
-                        label: 'Start column + Duration column',
-                        example: 'Start: 9:00   |   Duration: 60 · 1h · 1:00 · 60min',
-                        color: 'text-moss-300',
-                      },
-                    ].map((opt, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className={cn('text-[10px] font-bold mt-0.5 w-4 text-right flex-shrink-0', opt.color)}>
-                          {i === 0 ? 'A' : i === 1 ? 'B' : 'C'}
-                        </span>
-                        <div>
-                          <p className={cn('text-xs font-medium', opt.color)}>{opt.label}</p>
-                          <p className="text-[10px] text-warm-600 mt-0.5 font-mono">{opt.example}</p>
-                        </div>
-                      </div>
-                    ))}
+                  <table className="w-full text-[11px] font-mono">
+                    <thead>
+                      <tr className="bg-warm-800/60">
+                        <th className="text-left px-3 py-1.5 text-warm-400 font-semibold border-r border-warm-700/40">Item</th>
+                        <th className="text-left px-3 py-1.5 text-amber-300 font-semibold border-r border-warm-700/40">Start</th>
+                        <th className="text-left px-3 py-1.5 text-amber-300 font-semibold">End</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-warm-900/40">
+                      <tr className="border-t border-warm-800/40">
+                        <td className="px-3 py-1.5 text-warm-300 border-r border-warm-700/40">Opening remarks</td>
+                        <td className="px-3 py-1.5 text-warm-200 border-r border-warm-700/40">9:00</td>
+                        <td className="px-3 py-1.5 text-warm-200">9:15</td>
+                      </tr>
+                      <tr className="border-t border-warm-800/40">
+                        <td className="px-3 py-1.5 text-warm-300 border-r border-warm-700/40">Keynote</td>
+                        <td className="px-3 py-1.5 text-warm-200 border-r border-warm-700/40">9:15</td>
+                        <td className="px-3 py-1.5 text-warm-200">10:00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Option C — start + duration */}
+                <div className="rounded-lg border border-warm-700/50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-moss-950/40 border-b border-warm-700/50">
+                    <span className="text-[10px] font-bold text-moss-300 uppercase tracking-wider">Option C</span>
+                    <span className="text-[11px] text-warm-400">— start time + duration</span>
                   </div>
+                  <table className="w-full text-[11px] font-mono">
+                    <thead>
+                      <tr className="bg-warm-800/60">
+                        <th className="text-left px-3 py-1.5 text-warm-400 font-semibold border-r border-warm-700/40">Item</th>
+                        <th className="text-left px-3 py-1.5 text-moss-300 font-semibold border-r border-warm-700/40">Start</th>
+                        <th className="text-left px-3 py-1.5 text-moss-300 font-semibold">Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-warm-900/40">
+                      <tr className="border-t border-warm-800/40">
+                        <td className="px-3 py-1.5 text-warm-300 border-r border-warm-700/40">Opening remarks</td>
+                        <td className="px-3 py-1.5 text-warm-200 border-r border-warm-700/40">9:00</td>
+                        <td className="px-3 py-1.5 text-warm-200">15min</td>
+                      </tr>
+                      <tr className="border-t border-warm-800/40">
+                        <td className="px-3 py-1.5 text-warm-300 border-r border-warm-700/40">Keynote</td>
+                        <td className="px-3 py-1.5 text-warm-200 border-r border-warm-700/40">9:15</td>
+                        <td className="px-3 py-1.5 text-warm-200">45min</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="px-3 py-1.5 text-[10px] text-warm-600 bg-warm-900/60 border-t border-warm-800/40">
+                    Duration accepts: <span className="text-warm-500">45 · 45min · 1h · 1:30 · 1h 30m</span>
+                  </p>
                 </div>
               </div>
+
+              <p className="text-[10px] text-warm-600 mt-2">
+                The <span className="text-warm-400">column header names don't matter</span> — you'll map them on the next step.
+              </p>
             </div>
 
             {/* Optional */}
