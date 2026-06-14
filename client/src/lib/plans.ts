@@ -17,7 +17,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     canCreateRoom:       false,
     canUseEditor:        true,
     canUsePresenter:     false,
-    canSaveEvents:       true,
+    canSaveEvents:       false,
     canUseGoogleSheets:  false,
     canUseCustomColumns: false,
     roomCapacity:        0,
