@@ -295,19 +295,19 @@ export function PaywallPage() {
 
                 <button
                   onClick={() => handleCheckout(plan.id)}
-                  disabled={isBusy || isCurrent}
+                  disabled={isBusy || (isCurrent && plan.id !== 'free')}
                   className={cn(
                     'w-full py-2.5 rounded-lg text-sm font-medium transition-colors',
                     plan.ctaCls,
-                    (isBusy || isCurrent) && 'opacity-50 cursor-not-allowed',
+                    (isBusy || (isCurrent && plan.id !== 'free')) && 'opacity-50 cursor-not-allowed',
                   )}>
                   {isBusy ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Redirecting…
                     </span>
-                  ) : isCurrent ? 'Current plan'
+                  ) : isCurrent && plan.id !== 'free' ? 'Current plan'
                     : plan.id === 'free' ? 'Continue free'
-                    : 'Start free trial'}
+                    : 'Get started'}
                 </button>
               </div>
             );
