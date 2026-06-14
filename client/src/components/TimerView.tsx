@@ -96,13 +96,13 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 overflow-hidden bg-warm-950">
+    <div className="relative flex flex-col md:flex-row h-full min-h-0 overflow-hidden bg-warm-950">
       <AnnouncementBanner />
 
       {/* ════════════════════════════════════════════════════════════
-          LEFT — timer panel
+          TOP/LEFT — timer panel
       ════════════════════════════════════════════════════════════ */}
-      <div className="w-[320px] shrink-0 flex flex-col border-r border-warm-800/50 bg-warm-950">
+      <div className="flex flex-col border-b border-warm-800/50 md:w-[320px] md:shrink-0 md:border-b-0 md:border-r bg-warm-950">
 
         {/* Status chip */}
         <div className="flex items-center justify-between px-5 pt-5 pb-0">

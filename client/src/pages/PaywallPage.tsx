@@ -164,7 +164,7 @@ export function PaywallPage() {
     <div className="min-h-screen bg-warm-950 flex flex-col">
 
       {/* Header */}
-      <header className="flex items-center justify-between px-8 h-14 border-b border-warm-800/40">
+      <header className="flex items-center justify-between px-4 sm:px-8 h-14 border-b border-warm-800/40">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(user ? '/dashboard' : '/landing')}
@@ -186,13 +186,13 @@ export function PaywallPage() {
                   {getPlanFeatures(currentPlan).label}
                 </span>
             }
-            <span className="text-xs text-warm-600">{user.email}</span>
+            <span className="hidden sm:inline text-xs text-warm-600">{user.email}</span>
           </div>
         )}
       </header>
 
       {/* Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-16">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
 
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-warm-100 mb-2">Choose your plan</h1>
@@ -233,7 +233,9 @@ export function PaywallPage() {
                 billingInterval === 'yearly'
                   ? 'bg-moss-800/60 border-moss-600/60 text-moss-300'
                   : 'bg-moss-900/40 border-moss-700/40 text-moss-400',
-              )}>Save up to 58%</span>
+              )}>
+                <span className="hidden sm:inline">Save up to </span>58%
+              </span>
             </button>
           </div>
         </div>

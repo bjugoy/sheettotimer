@@ -151,7 +151,7 @@ export function DashboardPage() {
 
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <header className="shrink-0 border-b border-warm-800/40 bg-warm-900/60">
-        <div className="flex items-center justify-between px-6 h-12">
+        <div className="flex items-center justify-between px-4 sm:px-6 h-12">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <img src="/STT_logo.png" className="w-4 h-4 rounded-sm object-contain" alt="" />
@@ -184,15 +184,15 @@ export function DashboardPage() {
             <button onClick={() => setShowProfile(true)}
               className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-300 transition-colors max-w-[140px]">
               <UserCircle className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{user?.user_metadata?.full_name || user?.email}</span>
+              <span className="hidden sm:inline truncate">{user?.user_metadata?.full_name || user?.email}</span>
             </button>
           </div>
         </div>
 
         {/* Join Room inline panel */}
         {showJoin && (
-          <div className="px-6 py-3 bg-warm-900/80 border-t border-warm-800/40 flex items-end gap-3">
-            <div className="space-y-1">
+          <div className="px-4 sm:px-6 py-3 bg-warm-900/80 border-t border-warm-800/40 flex flex-wrap items-end gap-3">
+            <div className="space-y-1 flex-1 min-w-[120px]">
               <label className="text-[10px] text-warm-600 uppercase tracking-wider">Room code</label>
               <input
                 autoFocus
@@ -205,18 +205,18 @@ export function DashboardPage() {
                   if (e.key === 'Escape') setShowJoin(false);
                 }}
                 placeholder="XXXXXX"
-                className="w-32 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5
+                className="w-full bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5
                   text-sm text-warm-100 font-mono tracking-[0.2em] text-center placeholder-warm-700
                   focus:outline-none focus:border-crimson-700/60 transition-colors"
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 flex-1 min-w-[140px]">
               <label className="text-[10px] text-warm-600 uppercase tracking-wider">Your name</label>
               <input
                 value={joinName}
                 onChange={e => setJoinName(e.target.value)}
                 placeholder="Name"
-                className="w-40 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5
+                className="w-full bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-1.5
                   text-sm text-warm-200 placeholder-warm-700
                   focus:outline-none focus:border-crimson-700/60 transition-colors"
               />
@@ -278,10 +278,10 @@ export function DashboardPage() {
       )}
 
       {/* ── Split panel (Pro / Studio) ────────────────────────────────────────── */}
-      {features.canSaveEvents && <div className="flex-1 flex min-h-0">
+      {features.canSaveEvents && <div className="flex-1 flex flex-col md:flex-row min-h-0">
 
         {/* Productions sidebar */}
-        <aside className="w-64 shrink-0 flex flex-col border-r border-warm-800/40 bg-warm-900/30">
+        <aside className="flex flex-col border-b border-warm-800/40 bg-warm-900/30 md:w-64 md:shrink-0 md:border-b-0 md:border-r">
           <div className="flex items-center justify-between px-4 py-3 border-b border-warm-800/30">
             <span className="text-xs font-semibold text-warm-500 uppercase tracking-wider">
               Productions
@@ -294,7 +294,7 @@ export function DashboardPage() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-2">
+          <div className="overflow-y-auto py-2 max-h-48 md:max-h-none md:flex-1">
             {addingProd && (
               <div className="px-3 py-2 space-y-1.5">
                 <input autoFocus value={newProdName} onChange={e => setNewProd(e.target.value)}

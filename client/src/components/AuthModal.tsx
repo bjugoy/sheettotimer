@@ -66,7 +66,7 @@ export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
   if (mode === 'confirm') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-800/60 rounded-xl shadow-2xl">
+        <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-800/60 rounded-xl shadow-2xl max-h-[90dvh] overflow-y-auto">
           <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-warm-800/40">
             <div className="flex items-center gap-2">
               <Radio className="w-4 h-4 text-crimson-400" />
@@ -103,7 +103,7 @@ export function AuthModal({ onClose, defaultMode = 'signin' }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-800/60 rounded-xl shadow-2xl">
+      <div className="w-full max-w-sm mx-4 bg-warm-900 border border-warm-800/60 rounded-xl shadow-2xl max-h-[90dvh] overflow-y-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-warm-800/40">

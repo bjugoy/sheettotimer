@@ -338,7 +338,7 @@ export default function App() {
               title={authUser ? 'Go to dashboard' : 'Go home'}
             >
               <img src="/STT_logo.png" className="w-4 h-4 rounded-sm object-contain" alt="" />
-              <span className="text-xs font-semibold tracking-wide">SheetToTimer</span>
+              <span className="hidden sm:inline text-xs font-semibold tracking-wide">SheetToTimer</span>
             </button>
           )}
 
@@ -572,7 +572,7 @@ export default function App() {
 
           {features.canUsePresenter && !showEditor && (
             <button onClick={() => setView('teleprompter')}
-              className="text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
+              className="hidden sm:block text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
                 text-warm-300 hover:bg-warm-800 hover:text-warm-100 transition-colors font-medium">
               Presenter
             </button>
@@ -580,7 +580,7 @@ export default function App() {
 
           {roomCode && !isOperator && (
             <button onClick={() => { leaveSession(); setView('load'); }}
-              className="text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
+              className="hidden sm:block text-xs px-3 py-1.5 rounded-lg border border-warm-700/60
                 text-warm-400 hover:bg-warm-800 hover:text-warm-200 transition-colors">
               Leave
             </button>
@@ -593,7 +593,7 @@ export default function App() {
           </button>
 
           {authUser ? (
-            <div className="flex items-center gap-2 ml-1">
+            <div className="hidden sm:flex items-center gap-2 ml-1">
               <button onClick={() => setShowProfile(true)}
                 className={cn(
                   'text-xs px-3 py-1.5 rounded-lg border font-semibold transition-colors',
@@ -613,7 +613,7 @@ export default function App() {
             </div>
           ) : (
             <button onClick={() => setShowAuth(true)}
-              className="flex items-center gap-1.5 ml-1 text-xs px-3 py-1.5 rounded-lg border
+              className="hidden sm:flex items-center gap-1.5 ml-1 text-xs px-3 py-1.5 rounded-lg border
                 border-warm-700/60 text-warm-300 hover:bg-warm-800 hover:text-warm-100 transition-colors">
               <LogIn className="w-3.5 h-3.5" /> Sign in
             </button>

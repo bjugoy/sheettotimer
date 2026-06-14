@@ -74,7 +74,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-warm-950 text-warm-100">
 
       {/* ── Nav ──────────────────────────────────────────────────────────────── */}
-      <nav className="flex items-center justify-between px-8 h-14 border-b border-warm-800/40">
+      <nav className="flex items-center justify-between px-4 sm:px-8 h-14 border-b border-warm-800/40">
         <div className="flex items-center gap-2">
           <img src="/STT_logo.png" className="w-4 h-4 rounded-sm object-contain" alt="" />
           <span className="text-sm font-bold text-warm-100 tracking-tight">SheetToTimer</span>
@@ -103,14 +103,14 @@ export function LandingPage() {
       </nav>
 
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-8 py-20 flex flex-col lg:flex-row items-center gap-16">
+      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-12 sm:py-20 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
         {/* Left copy */}
         <div className="flex-1 max-w-lg">
           <div className="inline-flex items-center gap-2 bg-crimson-900/30 border border-crimson-800/40
             text-crimson-300 text-[11px] px-3 py-1 rounded-full mb-6 tracking-wide uppercase">
             <Zap className="w-3 h-3" /> Live show management
           </div>
-          <h1 className="text-5xl font-bold leading-tight text-warm-100 mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-warm-100 mb-4">
             Run your show<br />
             <span className="text-crimson-400">from a spreadsheet.</span>
           </h1>
@@ -130,7 +130,7 @@ export function LandingPage() {
               Sign up
             </button>
           </div>
-          <div className="flex items-center gap-6 mt-8 text-warm-400 text-xs">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-6 sm:mt-8 text-warm-400 text-xs">
             <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-moss-400" /> Works with Excel & Google Sheets</span>
             <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-moss-400" /> Setup in 60 seconds</span>
           </div>
@@ -144,7 +144,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Pricing ──────────────────────────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-8 py-20" id="pricing">
+      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-12 sm:py-20" id="pricing">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-warm-100 mb-2">Simple pricing</h2>
           <p className="text-warm-400">Start free. Upgrade when you need rooms and collaboration.</p>
@@ -221,7 +221,7 @@ export function LandingPage() {
 
       {/* ── Features ─────────────────────────────────────────────────────────── */}
       <section className="border-t border-warm-800/30 bg-warm-900/30">
-        <div className="max-w-6xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-12 sm:py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { icon: <Radio className="w-5 h-5 text-crimson-400" />, title: 'Real-time sync', body: 'Share a 6-character room code. Everyone sees the same countdown, instantly.' },
             { icon: <Users className="w-5 h-5 text-amber-400" />, title: 'Operator + viewers', body: 'One operator controls the clock. Viewers follow live on their own screens.' },
@@ -237,8 +237,8 @@ export function LandingPage() {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-warm-800/30 px-8 py-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-[11px] text-warm-500">
+      <footer className="border-t border-warm-800/30 px-4 sm:px-8 py-8">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4 text-[11px] text-warm-500">
           <div className="flex items-center gap-1.5">
             <Radio className="w-3.5 h-3.5 text-crimson-600" />
             <span>© {new Date().getFullYear()} Notwey</span>
