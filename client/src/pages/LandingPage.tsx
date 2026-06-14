@@ -70,7 +70,7 @@ export function LandingPage() {
       {/* ── Nav ──────────────────────────────────────────────────────────────── */}
       <nav className="flex items-center justify-between px-8 h-14 border-b border-warm-800/40">
         <div className="flex items-center gap-2">
-          <Radio className="w-4 h-4 text-crimson-400" />
+          <img src="/STT_logo.png" className="w-4 h-4 rounded-sm object-contain" alt="" />
           <span className="text-sm font-bold text-warm-100 tracking-tight">SheetToTimer</span>
         </div>
         <div className="flex items-center gap-2">

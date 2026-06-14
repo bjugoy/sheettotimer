@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Radio, Plus, Folder, CalendarDays,
+  Plus, Folder, CalendarDays,
   ChevronRight, Trash2, Play, Loader2, UserCircle,
   ArrowLeft, LogIn,
 } from 'lucide-react';
@@ -154,7 +154,7 @@ export function DashboardPage() {
         <div className="flex items-center justify-between px-6 h-12">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <Radio className="w-3.5 h-3.5 text-crimson-400" />
+              <img src="/STT_logo.png" className="w-4 h-4 rounded-sm object-contain" alt="" />
               <span className="text-sm font-bold text-warm-200">SheetToTimer</span>
             </div>
             <span className="text-warm-800">·</span>

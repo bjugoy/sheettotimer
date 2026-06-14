@@ -337,7 +337,7 @@ export default function App() {
               className="flex items-center gap-1.5 text-warm-500 hover:text-warm-300 transition-colors"
               title={authUser ? 'Go to dashboard' : 'Go home'}
             >
-              <Radio className="w-3.5 h-3.5" />
+              <img src="/STT_logo.png" className="w-4 h-4 rounded-sm object-contain" alt="" />
               <span className="text-xs font-semibold tracking-wide">SheetToTimer</span>
             </button>
           )}
