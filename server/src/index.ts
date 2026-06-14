@@ -679,6 +679,7 @@ app.post('/api/billing/checkout', async (req, res) => {
       success_url:           successUrl,
       cancel_url:            safeReturn,
       allow_promotion_codes: true,
+      subscription_data:     { trial_period_days: 7 },
     }, { idempotencyKey });
 
     res.json({ url: session.url });
