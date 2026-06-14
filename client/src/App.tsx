@@ -84,6 +84,22 @@ export default function App() {
 
   const { createRoom, joinRoom, setUserRole } = useSocket();
 
+  const [reconnectBanner, setReconnectBanner] = useState<'hidden' | 'reconnecting' | 'reconnected'>('hidden');
+
+  useEffect(() => {
+    if (connected) {
+      if (reconnectBanner === 'reconnecting') {
+        setReconnectBanner('reconnected');
+        const t = setTimeout(() => setReconnectBanner('hidden'), 2000);
+        return () => clearTimeout(t);
+      }
+      setReconnectBanner('hidden');
+      return;
+    }
+    const t = setTimeout(() => setReconnectBanner('reconnecting'), 3000);
+    return () => clearTimeout(t);
+  }, [connected]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authParam = params.get('auth');
@@ -275,6 +291,28 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-warm-950">
+
+      {/* ── Reconnect banner ──────────────────────────────────────────────── */}
+      {reconnectBanner !== 'hidden' && (
+        <div className={cn(
+          'fixed top-0 inset-x-0 z-[9998] flex items-center justify-center gap-2 py-1.5 text-xs font-medium transition-colors',
+          reconnectBanner === 'reconnecting'
+            ? 'bg-amber-900/90 text-amber-200 border-b border-amber-700/60'
+            : 'bg-moss-900/90 text-moss-200 border-b border-moss-700/60'
+        )}>
+          {reconnectBanner === 'reconnecting' ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              Reconnecting to server…
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-moss-400" />
+              Reconnected
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Top bar ───────────────────────────────────────────────────────── */}
       <header className="shrink-0 flex items-center justify-between px-4 h-11
