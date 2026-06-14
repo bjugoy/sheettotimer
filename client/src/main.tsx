@@ -14,8 +14,10 @@ import { useAuthStore } from './store/authStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
 import { syncPlanFromStripe } from './lib/billing';
 import { CookieBanner } from './components/CookieBanner';
-import { Analytics } from '@vercel/analytics/react';
+import { inject } from '@vercel/analytics';
 import './index.css';
+
+inject();
 
 function UpdateBanner() {
   const updateAvailable = useUpdateCheck();
@@ -93,7 +95,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
-        <Analytics />
         <UpdateBanner />
         <CookieBanner />
         <Routes>
