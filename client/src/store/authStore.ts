@@ -57,6 +57,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // getSession(), getProductions(), and any other Supabase call on the page.
       if (session?.user) {
         clearFallback();
+        // Detect first-ever Google OAuth sign-in: last_sign_in_at ≈ created_at
+        if (event === 'SIGNED_IN' && session.user.app_metadata?.provider === 'google') {
+          const created     = new Date(session.user.created_at).getTime();
+          const lastSignIn  = new Date(session.user.last_sign_in_at!).getTime();
+          if (lastSignIn - created < 30_000) {
+            sessionStorage.setItem('stt-new-signup', '1');
+          }
+        }
         set({ user: session.user, session, loading: false });
         // Fetch plan outside the callback (setTimeout exits the Supabase
         // internal callback chain before making another Supabase call).
