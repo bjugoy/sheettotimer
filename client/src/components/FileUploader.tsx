@@ -187,27 +187,33 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'relative border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all',
+          'relative border-2 border-dashed rounded-xl py-10 px-6 text-center cursor-pointer transition-all',
           dragging
-            ? 'border-crimson-600/70 bg-crimson-950/30'
-            : 'border-warm-700/50 hover:border-warm-600/70 bg-warm-900/30 hover:bg-warm-900/50',
+            ? 'border-crimson-500 bg-crimson-950/40 scale-[1.01]'
+            : 'border-warm-500/40 hover:border-warm-400/60 bg-warm-800/25 hover:bg-warm-800/40',
           loading && 'pointer-events-none opacity-50'
         )}
       >
         <input ref={inputRef} type="file" accept=".xlsx,.ods,.csv" onChange={handleFile} className="sr-only" />
         <div className="flex flex-col items-center gap-3">
           {loading ? (
-            <div className="w-9 h-9 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <FileSpreadsheet className={cn('w-9 h-9', dragging ? 'text-crimson-400' : 'text-warm-600')} />
+            <FileSpreadsheet className={cn('w-10 h-10', dragging ? 'text-crimson-400' : 'text-warm-300')} />
           )}
           <div>
-            <p className="text-base font-semibold text-warm-200">
+            <p className="text-base font-semibold text-warm-100">
               {loading ? 'Parsing…' : 'Drop your spreadsheet here'}
             </p>
-            <p className="text-xs text-warm-600 mt-1">
-              .xlsx · .ods · .csv — or <span className="text-warm-400 underline underline-offset-2">click to browse</span>
+            <p className="text-sm text-warm-400 mt-1">
+              or{' '}
+              <span className="text-crimson-400 font-medium underline underline-offset-2 hover:text-crimson-300">
+                click to browse
+              </span>
             </p>
+            {!loading && (
+              <p className="text-xs text-warm-600 mt-2">.xlsx · .ods · .csv</p>
+            )}
           </div>
         </div>
       </div>
