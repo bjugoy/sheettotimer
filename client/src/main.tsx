@@ -11,6 +11,7 @@ import { PaywallPage } from './pages/PaywallPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { useAuthStore } from './store/authStore';
+import { useScheduleStore } from './store/scheduleStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
 import { syncPlanFromStripe } from './lib/billing';
 import { CookieBanner } from './components/CookieBanner';
@@ -67,7 +68,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const setPlan       = useAuthStore(s => s.setPlan);
   const refreshPlan   = useAuthStore(s => s.refreshPlan);
 
-  useEffect(() => { initialize(); }, []);
+  useEffect(() => {
+    useScheduleStore.getState().expireIfStale();
+    initialize();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

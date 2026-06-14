@@ -9,6 +9,7 @@ interface PerEventTimerState {
   currentIndex: number;
   isPaused: boolean;
   pausedAt: number | undefined;
+  sessionStartedAt: number | undefined;
 }
 
 interface ScheduleState {
@@ -49,6 +50,9 @@ interface ScheduleState {
   setSpreadsheetId: (id: string | null) => void;
   setGoogleAuthenticated: (v: boolean) => void;
 
+  sessionStartedAt: number | undefined;
+  expireIfStale: () => void;
+
   clearAll: () => void;
   pause: () => void;
   resume: () => void;
@@ -74,8 +78,9 @@ export const useScheduleStore = create<ScheduleState>()(
       pausedAt: undefined,
       activeEventId: null,
       timerStates: {},
+      sessionStartedAt: undefined,
 
-      setItems: (items) => set({ items, baseItems: items, currentIndex: 0, isPaused: false, pausedAt: undefined }),
+      setItems: (items) => set({ items, baseItems: items, currentIndex: 0, isPaused: false, pausedAt: undefined, sessionStartedAt: undefined }),
 
       shiftToNow: () => {
         const { items } = get();
@@ -127,11 +132,16 @@ export const useScheduleStore = create<ScheduleState>()(
 
       markStarted: (id) => {
         const now = Date.now();
-        const items = get().items.map(item =>
+        const { items: currentItems, sessionStartedAt } = get();
+        const items = currentItems.map(item =>
           item.id === id ? { ...item, status: 'active' as const, actualStart: now } : item
         );
         const idx = items.findIndex(i => i.id === id);
-        set({ items: recalculate(items, now), currentIndex: Math.max(0, idx) });
+        set({
+          items: recalculate(items, now),
+          currentIndex: Math.max(0, idx),
+          ...(sessionStartedAt === undefined ? { sessionStartedAt: now } : {}),
+        });
       },
 
       markDone: (id) => {
@@ -223,11 +233,11 @@ export const useScheduleStore = create<ScheduleState>()(
       setActiveEventId: (activeEventId) => set({ activeEventId }),
 
       saveTimer: (eventId) => {
-        const { items, baseItems, currentIndex, isPaused, pausedAt } = get();
+        const { items, baseItems, currentIndex, isPaused, pausedAt, sessionStartedAt } = get();
         set(s => ({
           timerStates: {
             ...s.timerStates,
-            [eventId]: { items, baseItems, currentIndex, isPaused, pausedAt },
+            [eventId]: { items, baseItems, currentIndex, isPaused, pausedAt, sessionStartedAt },
           },
         }));
       },
@@ -235,12 +245,22 @@ export const useScheduleStore = create<ScheduleState>()(
       loadTimer: (eventId) => {
         const saved = get().timerStates[eventId];
         if (!saved || saved.items.length === 0) return false;
+        // Stale saved state — discard it and let the caller load fresh from the server
+        if (saved.sessionStartedAt && Date.now() - saved.sessionStartedAt > 24 * 60 * 60 * 1000) {
+          set(s => {
+            const timerStates = { ...s.timerStates };
+            delete timerStates[eventId];
+            return { timerStates };
+          });
+          return false;
+        }
         set({
-          items:        saved.items,
-          baseItems:    saved.baseItems,
-          currentIndex: saved.currentIndex,
-          isPaused:     saved.isPaused,
-          pausedAt:     saved.pausedAt,
+          items:            saved.items,
+          baseItems:        saved.baseItems,
+          currentIndex:     saved.currentIndex,
+          isPaused:         saved.isPaused,
+          pausedAt:         saved.pausedAt,
+          sessionStartedAt: saved.sessionStartedAt,
         });
         return true;
       },
@@ -276,6 +296,25 @@ export const useScheduleStore = create<ScheduleState>()(
         set({ items: recalced, baseItems: recalced });
       },
 
+      expireIfStale: () => {
+        const { sessionStartedAt, items } = get();
+        if (!sessionStartedAt) return;
+        if (Date.now() - sessionStartedAt < 24 * 60 * 60 * 1000) return;
+        set({
+          items: items.map(item => ({
+            ...item,
+            status: 'not_started' as const,
+            actualStart: undefined,
+            actualEnd: undefined,
+            pausedAt: undefined,
+          })),
+          currentIndex: 0,
+          isPaused: false,
+          pausedAt: undefined,
+          sessionStartedAt: undefined,
+        });
+      },
+
       setSpreadsheetId: (spreadsheetId) => set({ spreadsheetId }),
       setGoogleAuthenticated: (googleAuthenticated) => set({ googleAuthenticated }),
 
@@ -283,7 +322,7 @@ export const useScheduleStore = create<ScheduleState>()(
         items: [], baseItems: [], currentIndex: 0,
         isPaused: false, pausedAt: undefined,
         activeEventId: null, timerStates: {},
-        columnMapping: [],
+        columnMapping: [], sessionStartedAt: undefined,
       }),
 
       recalc: () => set({ items: recalculate(get().items, Date.now()) }),
@@ -291,14 +330,15 @@ export const useScheduleStore = create<ScheduleState>()(
     {
       name: 'stt-schedule',
       partialize: (state) => ({
-        items:         state.items,
-        baseItems:     state.baseItems,
-        currentIndex:  state.currentIndex,
-        columnMapping: state.columnMapping,
-        activeEventId: state.activeEventId,
-        isPaused:      state.isPaused,
-        pausedAt:      state.pausedAt,
-        timerStates:   state.timerStates,
+        items:            state.items,
+        baseItems:        state.baseItems,
+        currentIndex:     state.currentIndex,
+        columnMapping:    state.columnMapping,
+        activeEventId:    state.activeEventId,
+        isPaused:         state.isPaused,
+        pausedAt:         state.pausedAt,
+        timerStates:      state.timerStates,
+        sessionStartedAt: state.sessionStartedAt,
       }),
     }
   )
