@@ -71,6 +71,7 @@ export function PaywallPage() {
 
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
   const [purchasing, setPurchasing]           = useState<Plan | null>(null);
+  const [purchasingLifetime, setPurchasingLifetime] = useState(false);
   const [purchaseError, setPurchaseError]     = useState<string | null>(null);
   const [successPlan, setSuccessPlan]         = useState<Plan | null>(null);
   const [showAuth, setShowAuth]               = useState(false);
@@ -114,7 +115,7 @@ export function PaywallPage() {
     handleCheckout(plan);
   }, [user]);
 
-  const handleCheckout = async (planId: Plan) => {
+  const handleCheckout = async (planId: Plan, intervalOverride?: 'monthly' | 'yearly' | 'lifetime') => {
     if (planId === 'free') { navigate('/dashboard'); return; }
 
     const token = getToken();
@@ -124,14 +125,16 @@ export function PaywallPage() {
       return;
     }
 
-    setPurchasing(planId);
+    const interval = intervalOverride ?? billingInterval;
+    const isLifetime = interval === 'lifetime';
+    if (isLifetime) setPurchasingLifetime(true); else setPurchasing(planId);
     setPurchaseError(null);
     try {
-      await startCheckout(planId as Exclude<Plan, 'free'>, token, billingInterval);
+      await startCheckout(planId as Exclude<Plan, 'free'>, token, interval);
       // startCheckout redirects — code below only runs on error
     } catch (e) {
       setPurchaseError(e instanceof Error ? e.message : 'Checkout failed. Please try again.');
-      setPurchasing(null);
+      if (isLifetime) setPurchasingLifetime(false); else setPurchasing(null);
     }
   };
 
@@ -307,11 +310,45 @@ export function PaywallPage() {
                     </span>
                   ) : isCurrent && plan.id !== 'free' ? 'Current plan'
                     : plan.id === 'free' ? 'Continue free'
-                    : 'Get started'}
+                    : 'Start 7-day free trial'}
                 </button>
               </div>
             );
           })}
+        </div>
+
+        {/* Lifetime deal */}
+        <div className="mt-6 w-full max-w-3xl border border-crimson-700/40 rounded-xl px-6 py-5
+          bg-crimson-900/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-crimson-300 uppercase tracking-wider">Studio Lifetime</span>
+              <span className="text-[10px] bg-crimson-900/40 border border-crimson-800/40 text-crimson-400
+                px-2 py-0.5 rounded-full font-semibold">One-time</span>
+            </div>
+            <p className="text-xs text-warm-500 leading-relaxed">
+              Everything in Studio — pay once, access forever. No subscription, no renewal.
+            </p>
+          </div>
+          <div className="flex items-center gap-4 shrink-0">
+            <div>
+              <span className="text-2xl font-bold text-warm-100">€49.99</span>
+            </div>
+            <button
+              onClick={() => handleCheckout('premium2', 'lifetime')}
+              disabled={purchasingLifetime || currentPlan === 'premium2'}
+              className={cn(
+                'px-5 py-2.5 border rounded-lg text-sm font-medium transition-colors',
+                currentPlan === 'premium2'
+                  ? 'bg-warm-800/30 border-warm-700/40 text-warm-600 cursor-not-allowed'
+                  : 'bg-crimson-800/60 hover:bg-crimson-700/60 border-crimson-700/60 text-crimson-100',
+                purchasingLifetime && 'opacity-50 cursor-not-allowed',
+              )}>
+              {purchasingLifetime ? (
+                <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Redirecting…</span>
+              ) : currentPlan === 'premium2' ? 'Current plan' : 'Get lifetime access'}
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 flex flex-col items-center gap-3">

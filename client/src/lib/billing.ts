@@ -18,7 +18,7 @@ async function postJSON(path: string, token: string, body?: object) {
   return data;
 }
 
-export async function startCheckout(plan: Exclude<Plan, 'free'>, token: string, interval: 'monthly' | 'yearly' = 'monthly'): Promise<void> {
+export async function startCheckout(plan: Exclude<Plan, 'free'>, token: string, interval: 'monthly' | 'yearly' | 'lifetime' = 'monthly'): Promise<void> {
   const data = await postJSON('/api/billing/checkout', token, { plan, interval, returnUrl: window.location.href });
   window.location.href = data.url;
 }

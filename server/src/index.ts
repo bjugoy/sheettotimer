@@ -18,7 +18,7 @@ import type {
 import { recalculate, PLAN_ROOM_CAPACITY } from '@program-timer/shared';
 import rateLimit from 'express-rate-limit';
 import { verifyToken, deleteUser, getStripeCustomerId, setStripeCustomerId, updatePlanByStripeCustomerId, getUserEmail } from './auth';
-import { stripe, PRICE_IDS, getPriceToPlan } from './stripe';
+import { stripe, PRICE_IDS, getPriceToPlan, LIFETIME_PRICE_ID, LIFETIME_PLAN } from './stripe';
 import {
   createRoom,
   getRoom,
@@ -115,6 +115,14 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;
     await updatePlanByStripeCustomerId(sub.customer as string, 'free');
+  }
+
+  // One-time lifetime purchase
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as { mode: string; payment_status: string; customer: string; metadata?: Record<string, string> };
+    if (session.mode === 'payment' && session.payment_status === 'paid' && session.metadata?.price_type === 'lifetime') {
+      await updatePlanByStripeCustomerId(session.customer, LIFETIME_PLAN);
+    }
   }
 
   // invoice.payment_failed — Stripe will retry automatically via Smart Retries/dunning.
@@ -622,14 +630,14 @@ app.post('/api/billing/checkout', async (req, res) => {
   const verified = await verifyToken(token);
   if (!verified) { res.status(401).json({ error: 'Invalid token' }); return; }
 
-  const { plan, interval = 'monthly', returnUrl } = req.body as { plan: 'premium1' | 'premium2'; interval?: 'monthly' | 'yearly'; returnUrl?: string };
-  if (interval !== 'monthly' && interval !== 'yearly') { res.status(400).json({ error: 'Invalid interval' }); return; }
-  const priceId = PRICE_IDS[plan]?.[interval];
-  if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
+  const { plan, interval = 'monthly', returnUrl } = req.body as { plan: 'premium1' | 'premium2'; interval?: 'monthly' | 'yearly' | 'lifetime'; returnUrl?: string };
+  if (interval !== 'monthly' && interval !== 'yearly' && interval !== 'lifetime') { res.status(400).json({ error: 'Invalid interval' }); return; }
 
   const safeReturn = (typeof returnUrl === 'string' && returnUrl.startsWith(CLIENT_URL))
     ? returnUrl
     : `${CLIENT_URL}/dashboard`;
+
+  const successUrl = safeReturn + (safeReturn.includes('?') ? '&' : '?') + 'billing=success';
 
   try {
     let customerId = await getStripeCustomerId(verified.userId);
@@ -643,11 +651,27 @@ app.post('/api/billing/checkout', async (req, res) => {
       await setStripeCustomerId(verified.userId, customerId);
     }
 
-    // 5-minute window key: same user+plan+interval within 5 min reuses the session
-    const windowKey = Math.floor(Date.now() / (5 * 60 * 1000));
+    const windowKey      = Math.floor(Date.now() / (5 * 60 * 1000));
     const idempotencyKey = `checkout-${verified.userId}-${plan}-${interval}-${windowKey}`;
 
-    const successUrl = safeReturn + (safeReturn.includes('?') ? '&' : '?') + 'billing=success';
+    if (interval === 'lifetime') {
+      if (!LIFETIME_PRICE_ID) { res.status(400).json({ error: 'Lifetime pricing not available' }); return; }
+      const session = await stripe.checkout.sessions.create({
+        customer:   customerId,
+        mode:       'payment',
+        line_items: [{ price: LIFETIME_PRICE_ID, quantity: 1 }],
+        success_url: successUrl,
+        cancel_url:  safeReturn,
+        metadata:    { price_type: 'lifetime', supabase_id: verified.userId },
+        payment_intent_data: { metadata: { price_type: 'lifetime', supabase_id: verified.userId } },
+      }, { idempotencyKey });
+      res.json({ url: session.url });
+      return;
+    }
+
+    const priceId = PRICE_IDS[plan]?.[interval];
+    if (!priceId) { res.status(400).json({ error: 'Invalid plan' }); return; }
+
     const session = await stripe.checkout.sessions.create({
       customer:              customerId,
       mode:                  'subscription',
@@ -678,15 +702,25 @@ app.post('/api/billing/sync', async (req, res) => {
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status:   'active',
-      limit:    1,
+      status:   'all',
+      limit:    10,
     });
 
     const priceToPlan = getPriceToPlan();
-    const priceId     = subscriptions.data[0]?.items.data[0]?.price.id ?? '';
-    const plan        = priceToPlan[priceId] ?? 'free';
+    const activeSub   = subscriptions.data.find(s => s.status === 'active' || s.status === 'trialing');
+    const priceId     = activeSub?.items.data[0]?.price.id ?? '';
+    let plan: string  = priceToPlan[priceId] ?? 'free';
 
-    await updatePlanByStripeCustomerId(customerId, plan);
+    // If no active subscription, check for lifetime one-time purchase
+    if (plan === 'free' && LIFETIME_PRICE_ID) {
+      const sessions = await stripe.checkout.sessions.list({ customer: customerId, limit: 20 });
+      const hasLifetime = sessions.data.some(s =>
+        s.payment_status === 'paid' && s.mode === 'payment' && s.metadata?.price_type === 'lifetime'
+      );
+      if (hasLifetime) plan = LIFETIME_PLAN;
+    }
+
+    await updatePlanByStripeCustomerId(customerId, plan as 'free' | 'premium1' | 'premium2');
     res.json({ plan });
   } catch (err) {
     console.error('[billing/sync]', err);
