@@ -79,7 +79,13 @@ export function useGoogleSheets() {
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
     const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
     const popup = window.open(apiUrl('/auth/google'), 'google-oauth', `width=${w},height=${h},left=${left},top=${top}`);
-    if (!popup) return;
+    if (!popup) {
+      // Popup blocked (common on mobile) — fall back to full-page redirect.
+      // The callback page will redirect back to /?auth=success when done,
+      // and checkAuthStatus() runs on App mount to update state.
+      window.location.href = apiUrl('/auth/google');
+      return;
+    }
     const poll = setInterval(() => {
       if (popup.closed) {
         clearInterval(poll);
