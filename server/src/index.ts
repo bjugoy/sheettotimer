@@ -543,8 +543,17 @@ app.get('/auth/google', (_req, res) => {
 
 function oauthPopupPage(success: boolean): string {
   const label = success ? 'Google Sheets connected!' : 'Connection failed.';
+  // Primary URL only (CLIENT_URL may be comma-separated in dev)
+  const frontendUrl = CLIENT_URL.split(',')[0].trim();
+  const redirectUrl = `${frontendUrl}/?auth=${success ? 'success' : 'error'}`;
+  // window.close() handles the desktop popup case. The setTimeout fallback
+  // handles mobile browsers where close() is a no-op on tabs not opened by script
+  // — after 800ms the user is sent back to the app and checkAuthStatus() runs on mount.
   return `<!doctype html><html><head><meta charset="utf-8"></head><body>
-  <script>window.close();</script>
+  <script>
+    window.close();
+    setTimeout(function() { window.location.href = '${redirectUrl}'; }, 800);
+  </script>
   <p style="font-family:sans-serif;text-align:center;margin-top:60px">${label} You can close this window.</p>
   </body></html>`;
 }

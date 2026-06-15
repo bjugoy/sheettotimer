@@ -58,8 +58,10 @@ On `initialize()` (called once from `AuthProvider` in `main.tsx`):
 Uses a **popup window** (not full-page redirect) to avoid losing the Supabase session.
 
 1. `useGoogleSheets.ts` → `startOAuth()` opens a popup to `/auth/google` on the Heroku server.
-2. Server handles the Google OAuth exchange, stores tokens in express-session, then serves an HTML page that just calls `window.close()`.
+2. Server handles the Google OAuth exchange, stores tokens in express-session (inside `session.save()` callback to avoid race), then serves an HTML page that calls `window.close()`.
 3. Client polls `popup.closed` every 500ms. When closed, calls `checkAuthStatus()` to update `googleAuthenticated` in the schedule store.
+
+**Mobile fallback**: On mobile browsers `window.open()` with size parameters is often blocked (returns `null`). In that case `startOAuth()` falls back to `window.location.href = /auth/google` — a full-page redirect through the OAuth flow. The callback page's `window.close()` will be a no-op on a tab not opened by script, so after 800ms it redirects to `CLIENT_URL/?auth=success`. `App.tsx` calls `checkAuthStatus()` on every mount, which picks up the session and updates `googleAuthenticated`.
 
 **Why not `postMessage`**: Google sets `Cross-Origin-Opener-Policy: same-origin` on its OAuth pages, which nullifies `window.opener` in the popup.
 
@@ -160,6 +162,7 @@ Socket.io's long-polling fallback (used during the WebSocket handshake) requires
 
 | Commit | Summary |
 |--------|---------|
+| (latest) | Fix Google Sheets OAuth on mobile — fallback to full-page redirect when popup blocked; callback page redirects to `/?auth=success` after `window.close()` fails so `checkAuthStatus()` runs on app mount |
 | `6175774` | Fix timer-page refresh flash — `initialView` checks `sessionStorage('stt-session')` first to skip load screen |
 | `826dd9a` | Fix Supabase `_initializePromise` deadlock — `onAuthStateChange` made synchronous; `fetchPlan` deferred via `setTimeout(fn, 0)` |
 | `26fbd21` | Skip `SIGNED_OUT` during init phase; fix plan fallback from `'free'` to `get().plan` |
