@@ -110,7 +110,14 @@ export default function App() {
     if (authParam) {
       window.history.replaceState({}, '', window.location.pathname);
     }
-    checkAuthStatus().then(setGoogleAuthenticated);
+    if (authParam === 'google') {
+      // Returned from successful mobile OAuth redirect — auth is guaranteed active.
+      // Don't rely on checkAuthStatus() here; cross-site cookies may be blocked on
+      // mobile Safari, causing it to return false even though the session is valid.
+      setGoogleAuthenticated(true);
+    } else {
+      checkAuthStatus().then(setGoogleAuthenticated);
+    }
   }, []);
 
   useEffect(() => {
