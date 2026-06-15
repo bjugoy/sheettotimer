@@ -80,36 +80,47 @@ export function useGoogleSheets() {
     const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
     const popup = window.open(apiUrl('/auth/google'), 'google-oauth', `width=${w},height=${h},left=${left},top=${top}`);
     if (!popup) {
-      // Popup blocked (common on mobile) — fall back to full-page redirect.
-      // The callback page will redirect back to /?auth=success when done,
-      // and checkAuthStatus() runs on App mount to update state.
+      // Popup blocked — full-page redirect. Server sends user back to
+      // /app?auth=google and checkAuthStatus() runs on App mount.
       window.location.href = apiUrl('/auth/google');
       return;
     }
-    const poll = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(poll);
-        checkAuthStatus().then(setGoogleAuthenticated);
-      }
-    }, 500);
-    setTimeout(() => { clearInterval(poll); if (!popup.closed) popup.close(); }, 5 * 60 * 1000);
+
+    // Google's OAuth pages set Cross-Origin-Opener-Policy: same-origin, which
+    // severs window.opener in the popup (postMessage fails) and can cause
+    // popup.closed to report true before auth completes. Instead we poll
+    // checkAuthStatus() directly and use the focus event for fast response
+    // when the popup window closes and control returns to the parent.
+    let done = false;
+    const finish = () => {
+      done = true;
+      clearInterval(poll);
+      window.removeEventListener('focus', onFocus);
+      if (!popup.closed) popup.close();
+    };
+
+    const check = () => {
+      if (done) return;
+      checkAuthStatus().then(authed => {
+        if (done) return;
+        if (authed) { finish(); setGoogleAuthenticated(true); }
+      });
+    };
+
+    // Fast path: check immediately when this window regains focus (popup closed)
+    const onFocus = () => setTimeout(check, 300);
+    window.addEventListener('focus', onFocus);
+
+    // Fallback: poll every 2 s in case focus event doesn't fire reliably
+    const poll = setInterval(check, 2000);
+
+    // Hard stop after 5 minutes
+    setTimeout(finish, 5 * 60 * 1000);
   }, [checkAuthStatus, setGoogleAuthenticated]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(() => {});
   }, []);
-
-  // Instant notification from the OAuth popup page via postMessage.
-  // Fires before popup.closed is detected by the poll, eliminating the UI lag.
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data === 'google-auth-complete') {
-        checkAuthStatus().then(setGoogleAuthenticated);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [checkAuthStatus, setGoogleAuthenticated]);
 
   return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect };
 }
