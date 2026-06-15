@@ -75,22 +75,25 @@ export function useGoogleSheets() {
   }, []);
 
   const startOAuth = useCallback(() => {
+    // Mobile browsers open window.open() as a new tab, not a closeable popup.
+    // Safari ITP also blocks cross-site SameSite=None cookies, so checkAuthStatus()
+    // returns false even after successful OAuth. Use a full-page redirect instead:
+    // the same tab lands on /app?auth=google which App.tsx trusts directly.
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = apiUrl('/auth/google');
+      return;
+    }
+
     const w = 500, h = 640;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
     const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
     const popup = window.open(apiUrl('/auth/google'), 'google-oauth', `width=${w},height=${h},left=${left},top=${top}`);
     if (!popup) {
-      // Popup blocked — full-page redirect. Server sends user back to
-      // /app?auth=google and checkAuthStatus() runs on App mount.
       window.location.href = apiUrl('/auth/google');
       return;
     }
 
-    // Google's OAuth pages set Cross-Origin-Opener-Policy: same-origin, which
-    // severs window.opener in the popup (postMessage fails) and can cause
-    // popup.closed to report true before auth completes. Instead we poll
-    // checkAuthStatus() directly and use the focus event for fast response
-    // when the popup window closes and control returns to the parent.
     let done = false;
     const finish = () => {
       done = true;
@@ -107,14 +110,9 @@ export function useGoogleSheets() {
       });
     };
 
-    // Fast path: check immediately when this window regains focus (popup closed)
     const onFocus = () => setTimeout(check, 300);
     window.addEventListener('focus', onFocus);
-
-    // Fallback: poll every 2 s in case focus event doesn't fire reliably
     const poll = setInterval(check, 2000);
-
-    // Hard stop after 5 minutes
     setTimeout(finish, 5 * 60 * 1000);
   }, [checkAuthStatus, setGoogleAuthenticated]);
 
