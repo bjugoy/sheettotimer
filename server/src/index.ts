@@ -545,12 +545,13 @@ function oauthPopupPage(success: boolean): string {
   const label = success ? 'Google Sheets connected!' : 'Connection failed.';
   // Primary URL only (CLIENT_URL may be comma-separated in dev)
   const frontendUrl = CLIENT_URL.split(',')[0].trim();
-  const redirectUrl = `${frontendUrl}/?auth=${success ? 'success' : 'error'}`;
-  // window.close() handles the desktop popup case. The setTimeout fallback
-  // handles mobile browsers where close() is a no-op on tabs not opened by script
-  // — after 800ms the user is sent back to the app and checkAuthStatus() runs on mount.
+  // Mobile fallback: redirect to /app so the FileUploader is shown, not RootRedirect.
+  // Desktop: postMessage fires first so the parent updates without needing this redirect.
+  const redirectUrl = `${frontendUrl}/app?auth=${success ? 'google' : 'error'}`;
+  const msg = success ? 'google-auth-complete' : 'google-auth-error';
   return `<!doctype html><html><head><meta charset="utf-8"></head><body>
   <script>
+    try { if (window.opener) window.opener.postMessage('${msg}', '*'); } catch(e) {}
     window.close();
     setTimeout(function() { window.location.href = '${redirectUrl}'; }, 800);
   </script>

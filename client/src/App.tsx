@@ -63,8 +63,11 @@ export default function App() {
       return Date.now() - createdAt <= 24 * 60 * 60 * 1000;
     } catch { return false; }
   })();
+  // Mobile Google auth lands here via /app?auth=google — go straight to load view.
+  const googleAuthCallback = new URLSearchParams(window.location.search).get('auth') === 'google';
   const initialView: AppView = wantsJoin ? 'join'
-    : fromDashboard ? 'load'        // dashboard nav always starts at load/upload
+    : fromDashboard ? 'load'
+    : googleAuthCallback ? 'load'
     : hasStoredSession ? 'timer'
     : items.length > 0 ? 'load'
     : 'join';
@@ -104,7 +107,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authParam = params.get('auth');
-    if (authParam === 'success' || authParam === 'error') {
+    if (authParam) {
       window.history.replaceState({}, '', window.location.pathname);
     }
     checkAuthStatus().then(setGoogleAuthenticated);

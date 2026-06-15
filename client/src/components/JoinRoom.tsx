@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Radio, UserCircle, Lock, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Radio, UserCircle, Lock, RotateCcw, ArrowLeft } from 'lucide-react';
 
 const SESSION_KEY = 'stt-session';
 
@@ -33,6 +34,7 @@ interface Props {
 type Mode = 'create' | 'join';
 
 export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Props) {
+  const navigate     = useNavigate();
   const { createRoom, joinRoom } = useSocket();
   const user         = useAuthStore(s => s.user);
   const plan         = useAuthStore(s => s.plan);
@@ -89,6 +91,22 @@ export function JoinRoom({ onSkip, onSignIn, prefilledCode, prefilledName }: Pro
   return (
     <div className="min-h-screen bg-warm-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
+
+        {/* Nav — back to dashboard (authenticated) or landing (guest) */}
+        <div className="flex items-center justify-between mb-5">
+          <button
+            onClick={() => navigate(user ? '/dashboard' : '/landing')}
+            className="flex items-center gap-1.5 text-xs text-warm-600 hover:text-warm-400 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            {user ? 'Dashboard' : 'Home'}
+          </button>
+          {!user && (
+            <button onClick={onSignIn}
+              className="text-xs text-warm-600 hover:text-warm-400 transition-colors">
+              Sign in
+            </button>
+          )}
+        </div>
 
         {/* Rejoin banner — only for guests; authenticated users rejoin silently above */}
         {stored && !user && (

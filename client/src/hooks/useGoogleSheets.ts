@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { ScheduleItem } from '@program-timer/shared';
 import { formatTime } from '../utils/timeUtils';
 import { apiUrl } from '../lib/api';
@@ -98,6 +98,18 @@ export function useGoogleSheets() {
   const disconnect = useCallback(async (): Promise<void> => {
     await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(() => {});
   }, []);
+
+  // Instant notification from the OAuth popup page via postMessage.
+  // Fires before popup.closed is detected by the poll, eliminating the UI lag.
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data === 'google-auth-complete') {
+        checkAuthStatus().then(setGoogleAuthenticated);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [checkAuthStatus, setGoogleAuthenticated]);
 
   return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect };
 }
