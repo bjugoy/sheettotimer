@@ -13,11 +13,13 @@ export function useGoogleSheets() {
 
   const fetchSheet = useCallback(async (spreadsheetId: string) => {
     const token = getToken();
+    const gst = localStorage.getItem('gst');
     const res = await fetch(apiUrl('/api/sheets/fetch'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(gst ? { 'X-Google-Session': gst } : {}),
       },
       credentials: 'include',
       body: JSON.stringify({ spreadsheetId }),
@@ -44,11 +46,13 @@ export function useGoogleSheets() {
       const values = [headers, ...rows];
 
       const token = getToken();
+      const gst = localStorage.getItem('gst');
       const res = await fetch(apiUrl('/api/sheets/write'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(gst ? { 'X-Google-Session': gst } : {}),
         },
         credentials: 'include',
         body: JSON.stringify({ spreadsheetId, range: 'A1', values }),
@@ -66,7 +70,11 @@ export function useGoogleSheets() {
 
   const checkAuthStatus = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch(apiUrl('/auth/status'), { credentials: 'include' });
+      const gst = localStorage.getItem('gst');
+      const res = await fetch(apiUrl('/auth/status'), {
+        credentials: 'include',
+        headers: gst ? { 'X-Google-Session': gst } : {},
+      });
       const data = await res.json();
       return data.authenticated === true;
     } catch {
@@ -117,7 +125,13 @@ export function useGoogleSheets() {
   }, [checkAuthStatus, setGoogleAuthenticated]);
 
   const disconnect = useCallback(async (): Promise<void> => {
-    await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(() => {});
+    const gst = localStorage.getItem('gst') ?? undefined;
+    localStorage.removeItem('gst');
+    await fetch(apiUrl('/auth/logout'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: gst ? { 'X-Google-Session': gst } : {},
+    }).catch(() => {});
   }, []);
 
   return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect };

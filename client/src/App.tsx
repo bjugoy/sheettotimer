@@ -114,6 +114,8 @@ export default function App() {
       // Returned from successful mobile OAuth redirect — auth is guaranteed active.
       // Don't rely on checkAuthStatus() here; cross-site cookies may be blocked on
       // mobile Safari, causing it to return false even though the session is valid.
+      const mst = params.get('mst');
+      if (mst) localStorage.setItem('gst', mst);
       setGoogleAuthenticated(true);
     } else {
       checkAuthStatus().then(setGoogleAuthenticated);

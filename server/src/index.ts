@@ -44,6 +44,10 @@ const server = http.createServer(app);
 const isProd     = process.env.NODE_ENV === 'production';
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
 
+// Mobile session tokens — opaque random keys mapping to encrypted Google tokens.
+// Used when cross-site SameSite=None cookies are blocked (mobile Safari ITP).
+const mobileGoogleSessions = new Map<string, { encTokens: string; expires: number }>();
+
 if (isProd && !process.env.SESSION_SECRET) {
   throw new Error('[startup] SESSION_SECRET env var is required in production. Set it in your Heroku config vars.');
 }
@@ -75,7 +79,7 @@ const allowedOrigins: string[] = CLIENT_URL.split(',').flatMap(raw => {
 // Required for secure cookies to work behind Heroku's reverse proxy
 if (isProd) app.set('trust proxy', 1);
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-Google-Session'] }));
 
 // Security headers — CSP disabled (API server, not HTML); crossOriginEmbedderPolicy off for cross-origin use
 app.use(helmet({
@@ -535,19 +539,28 @@ function getSessionTokens(req: express.Request) {
 function setSessionTokens(req: express.Request, tokens: { access_token: string | null; refresh_token: string | null }) {
   req.session.googleTokensEnc = encryptTokens(tokens);
 }
+function getMobileTokens(req: express.Request) {
+  const mst = req.headers['x-google-session'] as string | undefined;
+  if (!mst) return null;
+  const entry = mobileGoogleSessions.get(mst);
+  if (!entry || Date.now() > entry.expires) return null;
+  try { return decryptTokens(entry.encTokens); } catch { return null; }
+}
 
 app.get('/auth/google', (_req, res) => {
   const client = createOAuthClient();
   res.redirect(getAuthUrl(client));
 });
 
-function oauthPopupPage(success: boolean): string {
+function oauthPopupPage(success: boolean, mst?: string): string {
   const label = success ? 'Google Sheets connected!' : 'Connection failed.';
   // Primary URL only (CLIENT_URL may be comma-separated in dev)
   const frontendUrl = CLIENT_URL.split(',')[0].trim();
   // Mobile fallback: redirect to /app so the FileUploader is shown, not RootRedirect.
-  // Desktop: postMessage fires first so the parent updates without needing this redirect.
-  const redirectUrl = `${frontendUrl}/app?auth=${success ? 'google' : 'error'}`;
+  // mst (mobile session token) is appended so the client can authenticate sheet API
+  // calls without relying on cross-site SameSite=None cookies (blocked by Safari ITP).
+  const authValue = success ? `google${mst ? `&mst=${mst}` : ''}` : 'error';
+  const redirectUrl = `${frontendUrl}/app?auth=${authValue}`;
   const msg = success ? 'google-auth-complete' : 'google-auth-error';
   return `<!doctype html><html><head><meta charset="utf-8"></head><body>
   <script>
@@ -570,8 +583,10 @@ app.get('/auth/google/callback', async (req, res) => {
       refresh_token: tokens.refresh_token ?? null,
     });
     req.session.save((err) => {
-      if (err) console.error('[auth/google/callback] session save failed:', err);
-      res.send(oauthPopupPage(!err));
+      if (err) { console.error('[auth/google/callback] session save failed:', err); res.send(oauthPopupPage(false)); return; }
+      const mst = randomBytes(24).toString('hex');
+      mobileGoogleSessions.set(mst, { encTokens: req.session.googleTokensEnc!, expires: Date.now() + 24 * 60 * 60 * 1000 });
+      res.send(oauthPopupPage(true, mst));
     });
   } catch (e) {
     res.send(oauthPopupPage(false));
@@ -579,11 +594,13 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 app.get('/auth/status', (req, res) => {
-  const tokens = getSessionTokens(req);
+  const tokens = getSessionTokens(req) ?? getMobileTokens(req);
   res.json({ authenticated: !!tokens?.access_token });
 });
 
 app.post('/auth/logout', (req, res) => {
+  const mst = req.headers['x-google-session'] as string | undefined;
+  if (mst) mobileGoogleSessions.delete(mst);
   req.session.destroy(() => res.json({ ok: true }));
 });
 
@@ -776,7 +793,7 @@ app.post('/api/sheets/fetch', async (req, res) => {
       return;
     }
   }
-  const tokens = getSessionTokens(req);
+  const tokens = getSessionTokens(req) ?? getMobileTokens(req);
   if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
     return;
@@ -821,7 +838,7 @@ app.post('/api/sheets/write', async (req, res) => {
       return;
     }
   }
-  const tokens = getSessionTokens(req);
+  const tokens = getSessionTokens(req) ?? getMobileTokens(req);
   if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
     return;
