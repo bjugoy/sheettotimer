@@ -353,7 +353,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           {/* Left anchor — Dashboard back-button when opened from dashboard, logo otherwise */}
           {fromDashboard ? (
-            <button onClick={goBack}
+            <button onClick={() => guardNav(goBack)}
               className="flex items-center gap-1.5 text-warm-500 hover:text-warm-200 transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
               <LayoutDashboard className="w-3.5 h-3.5" />
@@ -674,10 +674,10 @@ export default function App() {
       {showLeaveWarning && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
           <div className="bg-warm-900 border border-warm-700/60 rounded-xl p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-sm font-semibold text-warm-100">Leave without saving?</h3>
+            <h3 className="text-sm font-semibold text-warm-100">Schedule will not be saved</h3>
             <p className="text-xs text-warm-400 leading-relaxed">
-              Your schedule is only saved in this browser. On the Free plan it won't sync to the cloud —
-              if you clear your browser data or switch devices, it will be lost.
+              Your schedule will be cleared when you leave. On the Free plan, schedules are not saved to the cloud.
+              Upgrade to Pro to save productions and events.
             </p>
             <div className="flex gap-2">
               <button
@@ -689,6 +689,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setShowLeaveWarning(false);
+                  setItems([]);
                   pendingNavRef.current?.();
                   pendingNavRef.current = null;
                 }}
