@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Radio, Users, Copy, Check, LogIn, Save, UserCircle, ArrowLeft, LayoutDashboard, Share2, X } from 'lucide-react';
 import { JoinRoom } from './components/JoinRoom';
@@ -85,6 +85,8 @@ export default function App() {
   const [copiedUrl, setCopiedUrl]   = useState(false);
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const pendingNavRef = useRef<(() => void) | null>(null);
 
   const { createRoom, joinRoom, setUserRole } = useSocket();
 
@@ -103,6 +105,23 @@ export default function App() {
     const t = setTimeout(() => setReconnectBanner('reconnecting'), 3000);
     return () => clearTimeout(t);
   }, [connected]);
+
+  const guardNav = useCallback((action: () => void) => {
+    if (!features.canSaveEvents && items.length > 0 && view === 'timer') {
+      pendingNavRef.current = action;
+      setShowLeaveWarning(true);
+    } else {
+      action();
+    }
+  }, [features.canSaveEvents, items.length, view]);
+
+  // Warn on tab close / browser refresh when free user has an active schedule
+  useEffect(() => {
+    if (features.canSaveEvents || items.length === 0 || view !== 'timer') return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [features.canSaveEvents, items.length, view]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -342,10 +361,10 @@ export default function App() {
             </button>
           ) : (
             <button
-              onClick={() => {
-                if (!authUser) setItems([]); // clear so "Try for free" starts fresh
+              onClick={() => guardNav(() => {
+                if (!authUser) setItems([]);
                 navigate(authUser ? '/dashboard' : '/landing');
-              }}
+              })}
               className="flex items-center gap-1.5 text-warm-500 hover:text-warm-300 transition-colors"
               title={authUser ? 'Go to dashboard' : 'Go home'}
             >
@@ -651,6 +670,37 @@ export default function App() {
 
       {showAuth    && <AuthModal    onClose={() => setShowAuth(false)} />}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+
+      {showLeaveWarning && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-warm-900 border border-warm-700/60 rounded-xl p-6 max-w-sm w-full space-y-4">
+            <h3 className="text-sm font-semibold text-warm-100">Leave without saving?</h3>
+            <p className="text-xs text-warm-400 leading-relaxed">
+              Your schedule is only saved in this browser. On the Free plan it won't sync to the cloud —
+              if you clear your browser data or switch devices, it will be lost.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowLeaveWarning(false); pendingNavRef.current = null; }}
+                className="flex-1 py-2 border border-warm-700/50 rounded-lg text-xs
+                  text-warm-400 hover:text-warm-200 hover:border-warm-600 transition-colors">
+                Stay
+              </button>
+              <button
+                onClick={() => {
+                  setShowLeaveWarning(false);
+                  pendingNavRef.current?.();
+                  pendingNavRef.current = null;
+                }}
+                className="flex-1 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
+                  border border-crimson-700/50 rounded-lg text-xs font-medium
+                  text-warm-100 transition-colors">
+                Leave anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
