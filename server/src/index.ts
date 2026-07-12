@@ -785,14 +785,6 @@ app.post('/api/billing/portal', async (req, res) => {
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────
 
 app.post('/api/sheets/fetch', async (req, res) => {
-  const authHeader = req.headers.authorization?.replace('Bearer ', '');
-  if (authHeader) {
-    const verified = await verifyToken(authHeader);
-    if (!verified || verified.plan === 'free') {
-      res.status(403).json({ error: 'Google Sheets integration requires a Pro or Studio plan' });
-      return;
-    }
-  }
   const tokens = getSessionTokens(req) ?? getMobileTokens(req);
   if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
@@ -830,14 +822,6 @@ app.post('/api/sheets/fetch', async (req, res) => {
 // ─── REST: Write back to Google Sheet ────────────────────────────────────────
 
 app.post('/api/sheets/write', async (req, res) => {
-  const authHeader = req.headers.authorization?.replace('Bearer ', '');
-  if (authHeader) {
-    const verified = await verifyToken(authHeader);
-    if (!verified || verified.plan === 'free') {
-      res.status(403).json({ error: 'Google Sheets integration requires a Pro or Studio plan' });
-      return;
-    }
-  }
   const tokens = getSessionTokens(req) ?? getMobileTokens(req);
   if (!tokens?.access_token) {
     res.status(401).json({ error: 'Not authenticated with Google' });
