@@ -75,7 +75,7 @@ export default function App() {
   const [view, setView]             = useState<AppView>(initialView);
   // True while we're resolving which event to load — prevents stale persisted
   // items from auto-navigating to the timer before the correct event is ready
-  const [eventSwitching, setEventSwitching] = useState(fromDashboard);
+  const [eventSwitching, setEventSwitching] = useState(fromDashboard && !!locState.eventId);
   const [showEditor, setShowEditor] = useState(false);
   const [showAuth, setShowAuth]     = useState(false);
   const [showProfile, setShowProfile] = useState(false);

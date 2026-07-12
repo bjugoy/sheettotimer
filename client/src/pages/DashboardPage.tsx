@@ -260,7 +260,7 @@ export function DashboardPage() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/app')}
+              onClick={() => navigate('/app', { state: { from: 'dashboard' } })}
               className="w-full flex items-center justify-center gap-2 py-3 bg-crimson-800/60
                 hover:bg-crimson-700/60 border border-crimson-700/50 text-warm-100 font-medium
                 rounded-xl transition-colors text-sm">
