@@ -300,8 +300,14 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
                 )}
 
                 {sheetsError && (
-                  <div className="px-3 py-3 text-xs text-crimson-300">
-                    {sheetsError}
+                  <div className="px-3 py-4 space-y-2.5 text-center">
+                    <p className="text-xs text-crimson-300">{sheetsError}</p>
+                    <button
+                      onClick={async () => { await onGoogleDisconnect(); onGoogleAuth(); }}
+                      className="text-xs text-warm-400 underline underline-offset-2
+                        hover:text-warm-200 transition-colors">
+                      Reconnect Google account
+                    </button>
                   </div>
                 )}
 
