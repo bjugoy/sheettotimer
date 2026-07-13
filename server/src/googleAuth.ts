@@ -12,8 +12,7 @@ export function getAuthUrl(client: InstanceType<typeof google.auth.OAuth2>): str
   return client.generateAuthUrl({
     access_type: 'offline',
     scope: [
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive.metadata.readonly',
+      'https://www.googleapis.com/auth/spreadsheets.readonly',
     ],
     prompt: 'consent',
   });
@@ -46,33 +45,6 @@ function buildClient(tokens: Tokens): {
   return { auth, getFreshTokens: () => refreshed };
 }
 
-/** Returns true if the authenticated user has edit access to the sheet.
- *  Probes by updating a cell to its own value — requires write permission. */
-export async function checkCanEdit(
-  tokens: Tokens,
-  spreadsheetId: string,
-): Promise<{ canEdit: boolean; freshTokens: Tokens | null }> {
-  const { auth, getFreshTokens } = buildClient(tokens);
-  const sheets = google.sheets({ version: 'v4', auth });
-  try {
-    // Get the value of A1 and write it back — a genuine no-op that requires edit access.
-    const get = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'A1' });
-    const current = get.data.values?.[0]?.[0] ?? '';
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: 'A1',
-      valueInputOption: 'RAW',
-      requestBody: { values: [[current]] },
-    });
-    return { canEdit: true, freshTokens: getFreshTokens() };
-  } catch (err: unknown) {
-    const code = (err as { code?: number; status?: number })?.code
-                ?? (err as { code?: number; status?: number })?.status;
-    if (code === 403 || code === 401) return { canEdit: false, freshTokens: getFreshTokens() };
-    throw err;
-  }
-}
-
 export async function fetchSheetData(
   tokens: Tokens,
   spreadsheetId: string,
@@ -102,46 +74,4 @@ export async function fetchSheetData(
   });
 
   return { headers, rows, freshTokens: getFreshTokens() };
-}
-
-export async function listSpreadsheets(tokens: Tokens): Promise<{
-  files: { id: string; name: string; modifiedTime: string | null }[];
-  freshTokens: Tokens | null;
-}> {
-  const { auth, getFreshTokens } = buildClient(tokens);
-  const drive = google.drive({ version: 'v3', auth });
-
-  const res = await drive.files.list({
-    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
-    fields: 'files(id,name,modifiedTime)',
-    orderBy: 'modifiedTime desc',
-    pageSize: 100,
-  });
-
-  const files = (res.data.files ?? []).map(f => ({
-    id: f.id ?? '',
-    name: f.name ?? 'Untitled',
-    modifiedTime: f.modifiedTime ?? null,
-  }));
-
-  return { files, freshTokens: getFreshTokens() };
-}
-
-export async function writeSheetData(
-  tokens: Tokens,
-  spreadsheetId: string,
-  range: string,
-  values: (string | number | null)[][]
-): Promise<{ freshTokens: Tokens | null }> {
-  const { auth, getFreshTokens } = buildClient(tokens);
-  const sheets = google.sheets({ version: 'v4', auth });
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values },
-  });
-
-  return { freshTokens: getFreshTokens() };
 }

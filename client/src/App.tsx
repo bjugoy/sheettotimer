@@ -34,10 +34,9 @@ export default function App() {
 
   const items               = useScheduleStore(s => s.items);
   const setActiveEventId    = useScheduleStore(s => s.setActiveEventId);
-  const spreadsheetId       = useScheduleStore(s => s.spreadsheetId);
   const googleAuthenticated = useScheduleStore(s => s.googleAuthenticated);
   const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
-  const { checkAuthStatus, startOAuth, syncToSheet, syncing } = useGoogleSheets();
+  const { checkAuthStatus, startOAuth } = useGoogleSheets();
 
   const roomCode          = useSessionStore(s => s.roomCode);
   const users             = useSessionStore(s => s.users);
@@ -263,9 +262,6 @@ export default function App() {
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
-  const handleSyncToSheets = useCallback(async () => {
-    if (spreadsheetId) await syncToSheet(spreadsheetId, items);
-  }, [spreadsheetId, items, syncToSheet]);
 
   const goBack = () => {
     if (fromDashboard) navigate('/dashboard');
@@ -656,9 +652,6 @@ export default function App() {
         {showEditor ? (
           <ScheduleEditor
             onClose={() => setShowEditor(false)}
-            onSyncToSheets={spreadsheetId && features.canUseGoogleSheets ? handleSyncToSheets : undefined}
-            hasSheetsConnection={!!spreadsheetId && googleAuthenticated && features.canUseGoogleSheets}
-            isSyncing={syncing}
           />
         ) : (
           <TimerView

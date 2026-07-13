@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Trash2, GripVertical, RefreshCw, Upload } from 'lucide-react';
+import { Trash2, GripVertical, Upload } from 'lucide-react';
 import type { ScheduleItem } from '@program-timer/shared';
 import { recalculate } from '@program-timer/shared';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -195,12 +195,9 @@ function EditorRow({
 
 interface EditorProps {
   onClose: () => void;
-  onSyncToSheets?: () => void;
-  hasSheetsConnection: boolean;
-  isSyncing?: boolean;
 }
 
-export function ScheduleEditor({ onClose, onSyncToSheets, hasSheetsConnection, isSyncing }: EditorProps) {
+export function ScheduleEditor({ onClose }: EditorProps) {
   const storeItems     = useScheduleStore(s => s.items);
   const currentIndex   = useScheduleStore(s => s.currentIndex);
   const setItemsDraft  = useScheduleStore(s => s.setItemsDraft);
@@ -295,17 +292,6 @@ export function ScheduleEditor({ onClose, onSyncToSheets, hasSheetsConnection, i
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Sync to Sheets */}
-          {hasSheetsConnection && canEdit && (
-            <button onClick={onSyncToSheets} disabled={isSyncing}
-              className="flex items-center gap-1.5 text-[11px] text-warm-500 hover:text-warm-300
-                px-2 py-1 bg-warm-900 hover:bg-warm-800 border border-warm-800
-                hover:border-warm-700 rounded transition-colors disabled:opacity-50">
-              <RefreshCw className={cn('w-3 h-3', isSyncing && 'animate-spin')} />
-              Sync
-            </button>
-          )}
-
           {/* Discard */}
           {isDirty && (
             <button onClick={handleDiscard}

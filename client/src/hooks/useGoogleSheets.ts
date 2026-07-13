@@ -1,13 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
-import type { ScheduleItem } from '@program-timer/shared';
-import { formatTime } from '../utils/timeUtils';
+import { useCallback } from 'react';
 import { apiUrl } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { useScheduleStore } from '../store/scheduleStore';
 
 export function useGoogleSheets() {
-  const [syncing, setSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
   const getToken = useAuthStore(s => s.getToken);
   const setGoogleAuthenticated = useScheduleStore(s => s.setGoogleAuthenticated);
 
@@ -29,44 +25,7 @@ export function useGoogleSheets() {
       throw new Error(err.error ?? 'Failed to fetch sheet');
     }
     return res.json() as Promise<{ headers: string[]; rows: Record<string, string | number | null>[] }>;
-  }, []);
-
-  const syncToSheet = useCallback(async (spreadsheetId: string, items: ScheduleItem[]) => {
-    setSyncing(true);
-    setSyncError(null);
-    try {
-      const headers = ['Start Time', 'End Time', 'Duration (min)', 'Title', 'Speaker Notes'];
-      const rows = items.map(item => [
-        formatTime(item.scheduledStart),
-        formatTime(item.scheduledEnd),
-        Math.round(item.durationMs / 60_000),
-        item.title,
-        item.notes ?? '',
-      ]);
-      const values = [headers, ...rows];
-
-      const token = getToken();
-      const gst = localStorage.getItem('gst');
-      const res = await fetch(apiUrl('/api/sheets/write'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(gst ? { 'X-Google-Session': gst } : {}),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ spreadsheetId, range: 'A1', values }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Write failed' }));
-        throw new Error(err.error ?? 'Write failed');
-      }
-    } catch (e) {
-      setSyncError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSyncing(false);
-    }
-  }, []);
+  }, [getToken]);
 
   const checkAuthStatus = useCallback(async (): Promise<boolean> => {
     try {
@@ -124,24 +83,6 @@ export function useGoogleSheets() {
     setTimeout(finish, 5 * 60 * 1000);
   }, [checkAuthStatus, setGoogleAuthenticated]);
 
-  const listSheets = useCallback(async (): Promise<{ id: string; name: string; modifiedTime: string | null }[]> => {
-    const token = getToken();
-    const gst = localStorage.getItem('gst');
-    const res = await fetch(apiUrl('/api/sheets/list'), {
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...(gst ? { 'X-Google-Session': gst } : {}),
-      },
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(err.error ?? 'Failed to list sheets');
-    }
-    const data = await res.json();
-    return data.files as { id: string; name: string; modifiedTime: string | null }[];
-  }, [getToken]);
-
   const disconnect = useCallback(async (): Promise<void> => {
     const gst = localStorage.getItem('gst') ?? undefined;
     localStorage.removeItem('gst');
@@ -152,5 +93,5 @@ export function useGoogleSheets() {
     }).catch(() => {});
   }, []);
 
-  return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect, listSheets };
+  return { fetchSheet, checkAuthStatus, startOAuth, disconnect };
 }

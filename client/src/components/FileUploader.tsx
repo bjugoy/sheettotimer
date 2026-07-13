@@ -1,8 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, FileSpreadsheet, FileText, ChevronDown, ChevronUp, Search, RefreshCw } from 'lucide-react';
+import React, { useCallback, useRef, useState } from 'react';
+import { Link, FileSpreadsheet, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { extractSheetId, cn } from '../utils/timeUtils';
-
-interface SpreadsheetFile { id: string; name: string; modifiedTime: string | null; }
 
 interface Props {
   onFile: (file: File) => void;
@@ -10,45 +8,16 @@ interface Props {
   isGoogleAuthed: boolean;
   onGoogleAuth: () => void;
   onGoogleDisconnect: () => void;
-  onListSheets?: () => Promise<SpreadsheetFile[]>;
   canUseGoogleSheets?: boolean;
   loading?: boolean;
 }
 
-export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, onGoogleDisconnect, onListSheets, canUseGoogleSheets = false, loading }: Props) {
+export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth, onGoogleDisconnect, canUseGoogleSheets = false, loading }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
   const [tipsOpen, setTipsOpen] = useState(true);
-  const [sheetsList, setSheetsList] = useState<SpreadsheetFile[] | null>(null);
-  const [sheetsLoading, setSheetsLoading] = useState(false);
-  const [sheetsError, setSheetsError] = useState<string | null>(null);
-  const [sheetsSearch, setSheetsSearch] = useState('');
-
-  const loadSheetsList = useCallback(async () => {
-    if (!onListSheets) return;
-    setSheetsLoading(true);
-    setSheetsError(null);
-    try {
-      const files = await onListSheets();
-      setSheetsList(files);
-    } catch (e) {
-      setSheetsError(e instanceof Error ? e.message : 'Failed to load spreadsheets.');
-    } finally {
-      setSheetsLoading(false);
-    }
-  }, [onListSheets]);
-
-  useEffect(() => {
-    if (isGoogleAuthed && onListSheets && sheetsList === null && !sheetsLoading) {
-      loadSheetsList();
-    }
-  }, [isGoogleAuthed, onListSheets]);
-
-  const filteredSheets = (sheetsList ?? []).filter(f =>
-    f.name.toLowerCase().includes(sheetsSearch.toLowerCase())
-  );
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragging(false);
@@ -268,102 +237,25 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
             Requires Pro or higher — upgrade to connect Google Sheets directly.
           </p>
         ) : isGoogleAuthed ? (
-          <div className="space-y-3">
-
-            {/* Spreadsheet picker */}
-            <div className="border border-warm-700/50 rounded-xl overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-2 bg-warm-800/40 border-b border-warm-700/40">
-                <Search className="w-3.5 h-3.5 text-warm-600 shrink-0" />
-                <input
-                  type="text"
-                  value={sheetsSearch}
-                  onChange={e => setSheetsSearch(e.target.value)}
-                  placeholder="Search your spreadsheets…"
-                  className="flex-1 bg-transparent text-xs text-warm-200 placeholder-warm-700
-                    focus:outline-none min-w-0"
-                />
-                <button
-                  onClick={loadSheetsList}
-                  disabled={sheetsLoading}
-                  title="Refresh list"
-                  className="text-warm-700 hover:text-warm-400 transition-colors disabled:opacity-40">
-                  <RefreshCw className={cn('w-3.5 h-3.5', sheetsLoading && 'animate-spin')} />
-                </button>
-              </div>
-
-              <div className="max-h-52 overflow-y-auto bg-warm-900/40">
-                {sheetsLoading && (
-                  <div className="flex items-center justify-center py-6 gap-2">
-                    <div className="w-4 h-4 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-warm-600">Loading…</span>
-                  </div>
-                )}
-
-                {sheetsError && (
-                  <div className="px-3 py-4 space-y-2.5 text-center">
-                    <p className="text-xs text-crimson-300">{sheetsError}</p>
-                    <button
-                      onClick={async () => { await onGoogleDisconnect(); onGoogleAuth(); }}
-                      className="text-xs text-warm-400 underline underline-offset-2
-                        hover:text-warm-200 transition-colors">
-                      Reconnect Google account
-                    </button>
-                  </div>
-                )}
-
-                {!sheetsLoading && !sheetsError && filteredSheets.length === 0 && (
-                  <p className="px-3 py-4 text-xs text-warm-700 text-center">
-                    {sheetsSearch ? 'No matches.' : 'No spreadsheets found in this account.'}
-                  </p>
-                )}
-
-                {!sheetsLoading && filteredSheets.map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => onSheetUrl(f.id)}
-                    disabled={loading}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left
-                      hover:bg-warm-800/60 border-b border-warm-800/40 last:border-0
-                      transition-colors group disabled:opacity-40">
-                    <FileSpreadsheet className="w-4 h-4 text-moss-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-warm-200 truncate group-hover:text-warm-100">
-                        {f.name}
-                      </p>
-                      {f.modifiedTime && (
-                        <p className="text-[10px] text-warm-700 mt-0.5">
-                          {formatRelativeTime(f.modifiedTime)}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={e => { setUrlInput(e.target.value); setUrlError(''); }}
+                placeholder="https://docs.google.com/spreadsheets/d/…"
+                className="flex-1 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-2
+                  text-sm text-warm-200 placeholder-warm-700 focus:outline-none
+                  focus:border-crimson-700/60 transition-colors"
+                onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
+              />
+              <button onClick={handleUrlSubmit} disabled={!urlInput.trim()}
+                className="px-4 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
+                  disabled:opacity-40 disabled:cursor-not-allowed border border-crimson-700/50
+                  rounded-lg text-sm font-medium text-warm-100 transition-colors">
+                Load
+              </button>
             </div>
-
-            {/* URL fallback */}
-            <div className="space-y-1.5">
-              <p className="text-[10px] text-warm-600 uppercase tracking-wider">Or paste a URL</p>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={urlInput}
-                  onChange={e => { setUrlInput(e.target.value); setUrlError(''); }}
-                  placeholder="https://docs.google.com/spreadsheets/d/…"
-                  className="flex-1 bg-warm-800/60 border border-warm-700/50 rounded-lg px-3 py-2
-                    text-sm text-warm-200 placeholder-warm-700 focus:outline-none
-                    focus:border-crimson-700/60 transition-colors"
-                  onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
-                />
-                <button onClick={handleUrlSubmit} disabled={!urlInput.trim()}
-                  className="px-4 py-2 bg-crimson-800/60 hover:bg-crimson-700/60
-                    disabled:opacity-40 disabled:cursor-not-allowed border border-crimson-700/50
-                    rounded-lg text-sm font-medium text-warm-100 transition-colors">
-                  Load
-                </button>
-              </div>
-            </div>
-
             <button
               onClick={onGoogleDisconnect}
               className="text-[11px] text-warm-600 hover:text-warm-400 transition-colors">
@@ -384,18 +276,6 @@ export function FileUploader({ onFile, onSheetUrl, isGoogleAuthed, onGoogleAuth,
       </div>
     </div>
   );
-}
-
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins  = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days  = Math.floor(diff / 86_400_000);
-  if (mins < 2)   return 'Just now';
-  if (mins < 60)  return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 30)  return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
 }
 
 function GoogleIcon() {

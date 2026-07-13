@@ -35,7 +35,7 @@ import {
   cleanupExpiredRooms,
   addAnnouncement,
 } from './rooms';
-import { createOAuthClient, getAuthUrl, checkCanEdit, fetchSheetData, writeSheetData, listSpreadsheets } from './googleAuth';
+import { createOAuthClient, getAuthUrl, fetchSheetData } from './googleAuth';
 import { encryptTokens, decryptTokens } from './tokenCrypto';
 
 const app = express();
@@ -782,32 +782,6 @@ app.post('/api/billing/portal', async (req, res) => {
   }
 });
 
-// ─── REST: List user's Google Spreadsheets ───────────────────────────────────
-
-app.get('/api/sheets/list', async (req, res) => {
-  const tokens = getSessionTokens(req) ?? getMobileTokens(req);
-  if (!tokens?.access_token) {
-    res.status(401).json({ error: 'Not authenticated with Google' });
-    return;
-  }
-  try {
-    const { files, freshTokens } = await listSpreadsheets(tokens);
-    if (freshTokens) setSessionTokens(req, freshTokens);
-    res.json({ files });
-  } catch (e: unknown) {
-    console.error('[sheets/list]', e);
-    const code = (e as { code?: number; status?: number })?.code
-              ?? (e as { code?: number; status?: number })?.status;
-    if (code === 403) {
-      res.status(403).json({ error: 'Drive access not granted. Please reconnect your Google account.' });
-    } else if (code === 401) {
-      res.status(401).json({ error: 'Google session expired. Please reconnect your Google account.' });
-    } else {
-      res.status(500).json({ error: 'Failed to list spreadsheets.' });
-    }
-  }
-});
-
 // ─── REST: Fetch Google Sheet ─────────────────────────────────────────────────
 
 app.post('/api/sheets/fetch', async (req, res) => {
@@ -842,41 +816,6 @@ app.post('/api/sheets/fetch', async (req, res) => {
     } else {
       res.status(500).json({ error: 'Failed to fetch sheet data. Check your Google Sheets connection.' });
     }
-  }
-});
-
-// ─── REST: Write back to Google Sheet ────────────────────────────────────────
-
-app.post('/api/sheets/write', async (req, res) => {
-  const tokens = getSessionTokens(req) ?? getMobileTokens(req);
-  if (!tokens?.access_token) {
-    res.status(401).json({ error: 'Not authenticated with Google' });
-    return;
-  }
-  const { spreadsheetId, range, values } = req.body as {
-    spreadsheetId: string;
-    range: string;
-    values: (string | number | null)[][];
-  };
-  if (!spreadsheetId || typeof spreadsheetId !== 'string' || !range || !values) {
-    res.status(400).json({ error: 'Missing required fields' });
-    return;
-  }
-  if (!/^[a-zA-Z0-9_-]{10,100}$/.test(spreadsheetId)) {
-    res.status(400).json({ error: 'Invalid spreadsheet ID format' });
-    return;
-  }
-  if (!Array.isArray(values) || !values.every(Array.isArray) || values.length > 10_000) {
-    res.status(400).json({ error: 'Invalid values format' });
-    return;
-  }
-  try {
-    const { freshTokens } = await writeSheetData(tokens, spreadsheetId, range, values);
-    if (freshTokens) setSessionTokens(req, freshTokens);
-    res.json({ ok: true });
-  } catch (e: unknown) {
-    console.error('[sheets/write]', e);
-    res.status(500).json({ error: 'Failed to write to sheet. Check your Google Sheets connection.' });
   }
 });
 
