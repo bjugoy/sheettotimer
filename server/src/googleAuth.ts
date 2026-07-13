@@ -13,6 +13,7 @@ export function getAuthUrl(client: InstanceType<typeof google.auth.OAuth2>): str
     access_type: 'offline',
     scope: [
       'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.metadata.readonly',
     ],
     prompt: 'consent',
   });
@@ -101,6 +102,29 @@ export async function fetchSheetData(
   });
 
   return { headers, rows, freshTokens: getFreshTokens() };
+}
+
+export async function listSpreadsheets(tokens: Tokens): Promise<{
+  files: { id: string; name: string; modifiedTime: string | null }[];
+  freshTokens: Tokens | null;
+}> {
+  const { auth, getFreshTokens } = buildClient(tokens);
+  const drive = google.drive({ version: 'v3', auth });
+
+  const res = await drive.files.list({
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+    fields: 'files(id,name,modifiedTime)',
+    orderBy: 'modifiedTime desc',
+    pageSize: 100,
+  });
+
+  const files = (res.data.files ?? []).map(f => ({
+    id: f.id ?? '',
+    name: f.name ?? 'Untitled',
+    modifiedTime: f.modifiedTime ?? null,
+  }));
+
+  return { files, freshTokens: getFreshTokens() };
 }
 
 export async function writeSheetData(

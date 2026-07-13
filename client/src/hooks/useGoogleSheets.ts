@@ -124,6 +124,24 @@ export function useGoogleSheets() {
     setTimeout(finish, 5 * 60 * 1000);
   }, [checkAuthStatus, setGoogleAuthenticated]);
 
+  const listSheets = useCallback(async (): Promise<{ id: string; name: string; modifiedTime: string | null }[]> => {
+    const token = getToken();
+    const gst = localStorage.getItem('gst');
+    const res = await fetch(apiUrl('/api/sheets/list'), {
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(gst ? { 'X-Google-Session': gst } : {}),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error ?? 'Failed to list sheets');
+    }
+    const data = await res.json();
+    return data.files as { id: string; name: string; modifiedTime: string | null }[];
+  }, [getToken]);
+
   const disconnect = useCallback(async (): Promise<void> => {
     const gst = localStorage.getItem('gst') ?? undefined;
     localStorage.removeItem('gst');
@@ -134,5 +152,5 @@ export function useGoogleSheets() {
     }).catch(() => {});
   }, []);
 
-  return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect };
+  return { fetchSheet, syncToSheet, syncing, syncError, checkAuthStatus, startOAuth, disconnect, listSheets };
 }

@@ -35,7 +35,7 @@ import {
   cleanupExpiredRooms,
   addAnnouncement,
 } from './rooms';
-import { createOAuthClient, getAuthUrl, checkCanEdit, fetchSheetData, writeSheetData } from './googleAuth';
+import { createOAuthClient, getAuthUrl, checkCanEdit, fetchSheetData, writeSheetData, listSpreadsheets } from './googleAuth';
 import { encryptTokens, decryptTokens } from './tokenCrypto';
 
 const app = express();
@@ -779,6 +779,32 @@ app.post('/api/billing/portal', async (req, res) => {
   } catch (err) {
     console.error('[billing/portal]', err);
     res.status(500).json({ error: 'Could not open billing portal. Please try again.' });
+  }
+});
+
+// ─── REST: List user's Google Spreadsheets ───────────────────────────────────
+
+app.get('/api/sheets/list', async (req, res) => {
+  const tokens = getSessionTokens(req) ?? getMobileTokens(req);
+  if (!tokens?.access_token) {
+    res.status(401).json({ error: 'Not authenticated with Google' });
+    return;
+  }
+  try {
+    const { files, freshTokens } = await listSpreadsheets(tokens);
+    if (freshTokens) setSessionTokens(req, freshTokens);
+    res.json({ files });
+  } catch (e: unknown) {
+    console.error('[sheets/list]', e);
+    const code = (e as { code?: number; status?: number })?.code
+              ?? (e as { code?: number; status?: number })?.status;
+    if (code === 403) {
+      res.status(403).json({ error: 'Drive access not granted. Please reconnect your Google account.' });
+    } else if (code === 401) {
+      res.status(401).json({ error: 'Google session expired. Please reconnect your Google account.' });
+    } else {
+      res.status(500).json({ error: 'Failed to list spreadsheets.' });
+    }
   }
 });
 
