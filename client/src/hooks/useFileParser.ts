@@ -5,6 +5,13 @@ import { detectColumnMapping, detectHeaderRow } from '@program-timer/shared';
 
 const PREVIEW_ROWS = 20;
 
+function excelSerialToTime(serial: number): string {
+  const totalMinutes = Math.round(serial * 24 * 60);
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 const MAX_FILE_SIZE  = 10 * 1024 * 1024; // 10 MB — zip-bomb guard
 const MAX_ROWS       = 5_000;
 const ALLOWED_TYPES  = new Set([
@@ -57,14 +64,24 @@ export function useFileParser() {
     const sheet = wb.Sheets[name];
     if (!sheet) throw new Error(`Sheet "${name}" not found in workbook`);
 
-    const aoa: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
+    const rawAoa: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
       defval: null,
       raw: true,
     });
 
-    if (aoa.length < 2) throw new Error('Sheet appears to be empty or has no data rows');
-    if (aoa.length > MAX_ROWS) throw new Error(`Sheet has too many rows (${aoa.length.toLocaleString()}). Maximum allowed is ${MAX_ROWS.toLocaleString()}.`);
+    if (rawAoa.length < 2) throw new Error('Sheet appears to be empty or has no data rows');
+    if (rawAoa.length > MAX_ROWS) throw new Error(`Sheet has too many rows (${rawAoa.length.toLocaleString()}). Maximum allowed is ${MAX_ROWS.toLocaleString()}.`);
+
+    // Excel stores time-only values as fractions of a day (e.g. 0.4375 = 10:30).
+    // Convert these to "HH:MM" strings so previews and column cards show readable times.
+    const aoa = rawAoa.map(row =>
+      row.map(cell =>
+        typeof cell === 'number' && cell > 0 && cell < 1
+          ? excelSerialToTime(cell)
+          : cell
+      )
+    );
 
     aoaRef.current = aoa;
     const detected = detectHeaderRow(aoa);
