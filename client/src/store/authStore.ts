@@ -27,12 +27,13 @@ interface AuthState {
 
 // Captured at module-load time before React or Supabase can strip URL params.
 // _recoveryPending: user clicked a password-reset link — must show reset form.
-// _oauthCallback:   OAuth or recovery token in-flight — skip getSession() to
-//                   avoid a deadlock before onAuthStateChange fires.
+// _oauthCallback:   PKCE OAuth code in-flight — skip getSession() to avoid
+//                   consuming the code before onAuthStateChange fires SIGNED_IN.
+//                   Hash-based tokens (#access_token) are NOT excluded here:
+//                   they require getSession() to be called so Supabase processes
+//                   the hash and fires PASSWORD_RECOVERY / SIGNED_IN.
 let _recoveryPending = window.location.hash.includes('type=recovery');
-const _oauthCallback =
-  window.location.hash.includes('access_token') ||
-  new URLSearchParams(window.location.search).has('code');
+const _oauthCallback = new URLSearchParams(window.location.search).has('code');
 
 async function fetchPlan(userId: string): Promise<Plan> {
   const { data, error } = await supabase
