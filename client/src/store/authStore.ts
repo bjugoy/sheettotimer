@@ -113,8 +113,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!_oauthCallback) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        clearFallback();
         if (session?.user) {
+          clearFallback();
           // Check recovery BEFORE any other state update.
           // Supabase fires PASSWORD_RECOVERY asynchronously (deferred setTimeout),
           // so it may arrive after getSession() resolves. Reading _recoveryPending
@@ -126,7 +126,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
           const plan = await fetchPlan(session.user.id).catch(() => get().plan);
           set({ user: session.user, session, plan, loading: false });
+        } else if (_recoveryPending) {
+          // getSession() returned null but we know a recovery token is in the URL.
+          // Supabase processes hash tokens asynchronously — PASSWORD_RECOVERY will
+          // fire via onAuthStateChange momentarily. Keep loading=true and let the
+          // 8-second fallback guard against a stale/expired token.
         } else {
+          clearFallback();
           // Only clear if onAuthStateChange hasn't already signed us in
           // (e.g. TOKEN_REFRESHED fired while getSession() was awaiting).
           set(s => s.loading ? { user: null, session: null, plan: 'free', loading: false } : s);
@@ -163,8 +169,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   resetPassword: async (email) => {
+    // Always use the canonical non-www domain so redirectTo matches the
+    // Supabase whitelist regardless of which domain the user is on.
+    const base = window.location.hostname === 'localhost'
+      ? window.location.origin
+      : 'https://sheettotimer.com';
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${base}/reset-password`,
     });
     return error?.message ?? null;
   },
