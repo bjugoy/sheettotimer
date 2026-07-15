@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { Trash2, GripVertical, Upload } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { Trash2, GripVertical, Upload, Plus } from 'lucide-react';
 import type { ScheduleItem } from '@program-timer/shared';
 import { recalculate } from '@program-timer/shared';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -63,6 +63,7 @@ interface RowProps {
   isChanged: boolean;
   canEdit: boolean;
   hasNotes: boolean;
+  autoFocus?: boolean;
   onUpdate: (id: string, changes: Partial<ScheduleItem>) => void;
   onDelete: (id: string) => void;
   onDragStart: (i: number) => void;
@@ -71,14 +72,20 @@ interface RowProps {
 }
 
 function EditorRow({
-  item, index, isCurrent, isChanged, canEdit, hasNotes,
+  item, index, isCurrent, isChanged, canEdit, hasNotes, autoFocus,
   onUpdate, onDelete, onDragStart, onDragOver, onDrop,
 }: RowProps) {
   const isDone   = item.status === 'done';
   const isActive = item.status === 'active';
   const hl       = isCurrent && !isDone;
 
-  const [editDur, setEditDur] = useState(String(Math.round(item.durationMs / 60_000)));
+  const [editDur, setEditDur]     = useState(String(Math.round(item.durationMs / 60_000)));
+  const [editTitle, setEditTitle] = useState(item.title);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) titleRef.current?.focus();
+  }, [autoFocus]);
 
   const commitDur = () => {
     const ms = parseDurInput(editDur);
@@ -142,14 +149,31 @@ function EditorRow({
       </td>
 
       {/* Title */}
-      <td className={cellCls('overflow-hidden')} title={item.title}>
-        <span className={cn('block truncate text-xs',
-          hl      ? 'text-warm-900 font-semibold'
-          : isDone ? 'text-warm-500 line-through decoration-warm-600'
-          : 'text-warm-200'
-        )}>
-          {inlineTitle(item.title)}
-        </span>
+      <td className={cellCls('overflow-hidden')}>
+        {canEdit && !isDone ? (
+          <input
+            ref={titleRef}
+            value={editTitle}
+            onChange={e => setEditTitle(e.target.value)}
+            onBlur={() => {
+              const trimmed = editTitle.trim();
+              if (trimmed !== item.title) onUpdate(item.id, { title: trimmed });
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            placeholder="Item title"
+            className={inputCls(hl)}
+          />
+        ) : (
+          <span className={cn('block truncate text-xs',
+            hl      ? 'text-warm-900 font-semibold'
+            : isDone ? 'text-warm-500 line-through decoration-warm-600'
+            : 'text-warm-200'
+          )}>
+            {inlineTitle(item.title)}
+          </span>
+        )}
       </td>
 
       {/* Duration — only editable cell */}
@@ -208,6 +232,8 @@ export function ScheduleEditor({ onClose }: EditorProps) {
   const canEdit = isOperator || !roomCode;
 
   // ── Draft state ─────────────────────────────────────────────────────────────
+  const [newItemId, setNewItemId] = useState<string | null>(null);
+
   const [draftItems, setDraftItems] = useState<ScheduleItem[]>(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
@@ -270,6 +296,25 @@ export function ScheduleEditor({ onClose }: EditorProps) {
     setIsDirty(false);
     setResetKey(k => k + 1);
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  };
+
+  const handleAddItem = () => {
+    const last = draftItems[draftItems.length - 1];
+    const startMs = last?.scheduledEnd ?? Date.now();
+    const durMs = 30 * 60_000;
+    const id = `draft-${Date.now()}`;
+    const newItem: ScheduleItem = {
+      id,
+      title: '',
+      scheduledStart: startMs,
+      scheduledEnd:   startMs + durMs,
+      projectedStart: startMs,
+      projectedEnd:   startMs + durMs,
+      durationMs:     durMs,
+      status:         'not_started',
+    };
+    updateDraft([...draftItems, newItem]);
+    setNewItemId(id);
   };
 
   return (
@@ -357,6 +402,7 @@ export function ScheduleEditor({ onClose }: EditorProps) {
                 isChanged={changedIds.has(item.id)}
                 canEdit={canEdit}
                 hasNotes={hasNotes}
+                autoFocus={item.id === newItemId}
                 onUpdate={applyUpdate}
                 onDelete={applyDelete}
                 onDragStart={i => { dragFrom.current = i; }}
@@ -377,16 +423,24 @@ export function ScheduleEditor({ onClose }: EditorProps) {
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <div className="shrink-0 px-4 py-2 border-t border-warm-800/40 bg-warm-900/40">
+      <div className="shrink-0 px-4 py-2 border-t border-warm-800/40 bg-warm-900/40 flex items-center gap-4">
+        {canEdit && (
+          <button
+            onClick={handleAddItem}
+            className="flex items-center gap-1 text-[11px] text-warm-500
+              hover:text-warm-300 transition-colors shrink-0">
+            <Plus className="w-3.5 h-3.5" />
+            Add item
+          </button>
+        )}
         {isDirty ? (
           <p className="text-[10px] text-warm-600">
             <span className="text-amber-400">Draft saved</span> — changes are not yet live.
-            Close and reopen to keep editing, or hit
-            <span className="text-warm-300"> Push to timer</span> when ready.
+            Hit <span className="text-warm-300">Push to timer</span> when ready.
           </p>
         ) : (
           <p className="text-[10px] text-warm-700">
-            Showing live schedule · Edit duration and push when ready
+            Edit title or duration · Add items · Push when ready
           </p>
         )}
       </div>
