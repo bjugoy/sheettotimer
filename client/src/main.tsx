@@ -11,6 +11,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { PaywallPage } from './pages/PaywallPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { useAuthStore } from './store/authStore';
 import { useScheduleStore } from './store/scheduleStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
@@ -38,8 +39,9 @@ function UpdateBanner() {
 }
 
 function RootRedirect() {
-  const user    = useAuthStore(s => s.user);
-  const loading = useAuthStore(s => s.loading);
+  const user               = useAuthStore(s => s.user);
+  const loading            = useAuthStore(s => s.loading);
+  const needsPasswordReset = useAuthStore(s => s.needsPasswordReset);
 
   // Room invite links: /?room=CODE — send everyone straight to /app regardless of auth state
   const roomCode = new URLSearchParams(window.location.search).get('room');
@@ -52,6 +54,7 @@ function RootRedirect() {
       <div className="w-5 h-5 rounded-full border-2 border-warm-700 border-t-crimson-500 animate-spin" />
     </div>
   );
+  if (needsPasswordReset) return <Navigate to="/reset-password" replace />;
   if (user) {
     const isNew = sessionStorage.getItem('stt-new-signup');
     if (isNew) {
@@ -105,8 +108,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/app"       element={<App />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/paywall"    element={<PaywallPage />} />
-          <Route path="/privacy"    element={<PrivacyPolicyPage />} />
-          <Route path="/terms"      element={<TermsOfServicePage />} />
+          <Route path="/privacy"         element={<PrivacyPolicyPage />} />
+          <Route path="/terms"           element={<TermsOfServicePage />} />
+          <Route path="/reset-password"  element={<ResetPasswordPage />} />
           <Route path="*"          element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>

@@ -5,16 +5,18 @@ import { supabase } from '../lib/supabase';
 import { apiUrl } from '../lib/api';
 
 interface AuthState {
-  user:    User | null;
-  session: Session | null;
-  plan:    Plan;
-  loading: boolean;
+  user:                User | null;
+  session:             Session | null;
+  plan:                Plan;
+  loading:             boolean;
+  needsPasswordReset:  boolean;
 
   initialize:        () => Promise<void>;
   signIn:            (email: string, password: string) => Promise<string | null>;
   signUp:            (email: string, password: string, name: string) => Promise<string | null>;
   signInWithGoogle:  () => Promise<string | null>;
   resetPassword:     (email: string) => Promise<string | null>;
+  updatePassword:    (password: string) => Promise<string | null>;
   signOut:           () => Promise<void>;
   updateDisplayName: (name: string) => Promise<string | null>;
   deleteAccount:     () => Promise<string | null>;
@@ -40,10 +42,11 @@ async function fetchPlan(userId: string): Promise<Plan> {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user:    null,
-  session: null,
-  plan:    'free',
-  loading: true,
+  user:               null,
+  session:            null,
+  plan:               'free',
+  loading:            true,
+  needsPasswordReset: false,
 
   initialize: async () => {
     const fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
@@ -55,6 +58,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // await _initializePromise, which in some versions is still pending when
       // this callback fires. Calling them here causes a deadlock that hangs
       // getSession(), getProductions(), and any other Supabase call on the page.
+
+      // Password reset link clicked — hold the session but force the reset form.
+      // Do NOT grant dashboard access until the user has set a new password.
+      if (event === 'PASSWORD_RECOVERY' && session?.user) {
+        clearFallback();
+        set({ user: session.user, session, loading: false, needsPasswordReset: true });
+        return;
+      }
+
       if (session?.user) {
         clearFallback();
         // Detect first-ever Google OAuth sign-in: last_sign_in_at ≈ created_at
@@ -137,9 +149,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   resetPassword: async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     return error?.message ?? null;
+  },
+
+  updatePassword: async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return error.message;
+    set({ needsPasswordReset: false });
+    return null;
   },
 
   updateDisplayName: async (name) => {
