@@ -15,11 +15,11 @@ export function ResetPasswordPage() {
   const [error, setError]         = useState<string | null>(null);
   const [done, setDone]           = useState(false);
 
-  // If someone navigates here directly without a recovery session, send them away
+  // Only redirect away once auth is fully settled and there is no recovery session.
+  // Do NOT redirect while loading=true — the PASSWORD_RECOVERY event may still be in-flight.
   useEffect(() => {
-    if (!loading && !needsPasswordReset) {
-      navigate('/', { replace: true });
-    }
+    if (loading) return;
+    if (!needsPasswordReset) navigate('/landing', { replace: true });
   }, [loading, needsPasswordReset, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {

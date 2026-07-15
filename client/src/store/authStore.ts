@@ -25,9 +25,11 @@ interface AuthState {
   refreshPlan:       () => Promise<void>;
 }
 
-// Captured at module-load time before React or Supabase can strip OAuth
-// params from the URL. Used to detect an in-flight OAuth callback so we
-// don't mark auth as "done" (loading:false, user:null) before SIGNED_IN fires.
+// Captured at module-load time before React or Supabase can strip URL params.
+// _recoveryPending: user clicked a password-reset link — must show reset form.
+// _oauthCallback:   OAuth or recovery token in-flight — skip getSession() to
+//                   avoid a deadlock before onAuthStateChange fires.
+let _recoveryPending = window.location.hash.includes('type=recovery');
 const _oauthCallback =
   window.location.hash.includes('access_token') ||
   new URLSearchParams(window.location.search).has('code');
@@ -60,8 +62,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // getSession(), getProductions(), and any other Supabase call on the page.
 
       // Password reset link clicked — hold the session but force the reset form.
-      // Do NOT grant dashboard access until the user has set a new password.
-      if (event === 'PASSWORD_RECOVERY' && session?.user) {
+      // Supabase v2 may fire PASSWORD_RECOVERY, SIGNED_IN, or INITIAL_SESSION
+      // depending on when the listener registers relative to hash processing.
+      // _recoveryPending (set from the URL hash at module load) catches all cases.
+      if (session?.user && (event === 'PASSWORD_RECOVERY' || _recoveryPending)) {
+        _recoveryPending = false;
         clearFallback();
         set({ user: session.user, session, loading: false, needsPasswordReset: true });
         return;
