@@ -115,6 +115,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: { session } } = await supabase.auth.getSession();
         clearFallback();
         if (session?.user) {
+          // Check recovery BEFORE any other state update.
+          // Supabase fires PASSWORD_RECOVERY asynchronously (deferred setTimeout),
+          // so it may arrive after getSession() resolves. Reading _recoveryPending
+          // here (set from the URL hash at module load) avoids the race entirely.
+          if (_recoveryPending) {
+            _recoveryPending = false;
+            set({ user: session.user, session, loading: false, needsPasswordReset: true });
+            return;
+          }
           const plan = await fetchPlan(session.user.id).catch(() => get().plan);
           set({ user: session.user, session, plan, loading: false });
         } else {
