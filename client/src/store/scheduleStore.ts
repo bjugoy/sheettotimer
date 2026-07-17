@@ -103,7 +103,12 @@ export const useScheduleStore = create<ScheduleState>()(
         const restored = items.map(item => {
           const base = baseItems.find(b => b.id === item.id);
           if (!base) return item;
-          return { ...item, scheduledStart: base.scheduledStart, scheduledEnd: base.scheduledEnd };
+          return {
+            ...item,
+            scheduledStart: base.scheduledStart,
+            scheduledEnd:   base.scheduledEnd,
+            pausedAt:       undefined,
+          };
         });
         set({ items: recalculate(restored, now), isPaused: false, pausedAt: undefined });
       },

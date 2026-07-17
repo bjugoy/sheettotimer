@@ -64,6 +64,16 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
     if (!roomCode) { revertToPrev(); } else { revertItem(); }
   };
 
+  const handleShiftToNow = () => {
+    shiftToNow();
+    if (roomCode) sendSchedule(useScheduleStore.getState().items);
+  };
+
+  const handleResetToOriginal = () => {
+    resetToOriginal();
+    if (roomCode) sendSchedule(useScheduleStore.getState().items);
+  };
+
   const handlePause = () => {
     pause();
     if (roomCode) sendSchedule(useScheduleStore.getState().items);
@@ -239,7 +249,7 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
         {canControl && (
           <div className="px-4 pb-3 flex gap-1.5">
             <button
-              onClick={shiftToNow}
+              onClick={handleShiftToNow}
               className="flex-1 flex items-center justify-center gap-1.5 py-2
                 bg-warm-900 hover:bg-warm-800 border border-warm-800
                 hover:border-warm-700 rounded-lg transition-all"
@@ -248,7 +258,7 @@ export function TimerView({ onOpenTeleprompter, onOpenEditor }: Props) {
               <span className="text-[11px] text-warm-500">From now</span>
             </button>
             <button
-              onClick={resetToOriginal}
+              onClick={handleResetToOriginal}
               className="flex-1 flex items-center justify-center gap-1.5 py-2
                 bg-warm-900 hover:bg-warm-800 border border-warm-800
                 hover:border-warm-700 rounded-lg transition-all"
