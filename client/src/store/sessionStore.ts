@@ -52,8 +52,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setConnected: (connected) => set({ connected }),
   setSocketError: (socketError) => set({ socketError }),
   setSessionEnded: (sessionEndedReason) => set({ sessionEndedReason }),
-  leaveSession: () => set({
-    roomCode: null, roomOwnerId: null, user: null, users: [],
-    isOperator: false, sessionEndedReason: null,
-  }),
+  leaveSession: () => {
+    try { sessionStorage.removeItem('stt-session'); } catch {}
+    set({
+      roomCode: null, roomOwnerId: null, user: null, users: [],
+      isOperator: false, sessionEndedReason: null,
+    });
+  },
 }));
