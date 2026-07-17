@@ -61,7 +61,7 @@ export function useSocket() {
       }
       // Set roomCode last — by this point items/user are already in the store,
       // so App.tsx's useEffect([roomCode]) sees the correct state.
-      setRoom(room.code);
+      setRoom(room.code, room.ownerId);
       // Persist session so the operator can rejoin after a page refresh
       try {
         sessionStorage.setItem('stt-session', JSON.stringify({

@@ -3,6 +3,7 @@ import type { RoomUser, Announcement } from '@program-timer/shared';
 
 interface SessionState {
   roomCode: string | null;
+  roomOwnerId: string | null;
   user: RoomUser | null;
   users: RoomUser[];
   announcements: Announcement[];
@@ -11,7 +12,7 @@ interface SessionState {
   socketError: string | null;
   sessionEndedReason: string | null;
 
-  setRoom: (code: string | null) => void;
+  setRoom: (code: string | null, ownerId?: string) => void;
   setUser: (user: RoomUser | null) => void;
   setUsers: (users: RoomUser[]) => void;
   addAnnouncement: (ann: Announcement) => void;
@@ -24,6 +25,7 @@ interface SessionState {
 
 export const useSessionStore = create<SessionState>((set, get) => ({
   roomCode: null,
+  roomOwnerId: null,
   user: null,
   users: [],
   announcements: [],
@@ -32,7 +34,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   socketError: null,
   sessionEndedReason: null,
 
-  setRoom: (roomCode) => set({ roomCode }),
+  setRoom: (roomCode, ownerId) => set({ roomCode, ...(ownerId ? { roomOwnerId: ownerId } : {}) }),
 
   setUser: (user) => set({ user, isOperator: user?.role === 'operator' }),
 
@@ -51,7 +53,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setSocketError: (socketError) => set({ socketError }),
   setSessionEnded: (sessionEndedReason) => set({ sessionEndedReason }),
   leaveSession: () => set({
-    roomCode: null, user: null, users: [],
+    roomCode: null, roomOwnerId: null, user: null, users: [],
     isOperator: false, sessionEndedReason: null,
   }),
 }));

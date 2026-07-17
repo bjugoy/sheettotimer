@@ -263,7 +263,7 @@ io.on('connection', (socket) => {
       }
 
       const room   = createRoom(verified.userId, capacity);
-      const result = joinRoom(room.code, socket.id, name, 'operator');
+      const result = joinRoom(room.code, socket.id, name, 'operator', verified.userId);
       if ('error' in result) { socket.emit('error', result.error); return; }
 
       registerSocket(socket.id, room.code);
@@ -323,6 +323,11 @@ io.on('connection', (socket) => {
         return;
       }
       const target = users.find(u => u.id === targetSocketId);
+      const room   = getRoom(code)!;
+      if (target?.userId && target.userId === room.ownerId) {
+        socket.emit('error', 'The room owner cannot be demoted');
+        return;
+      }
       if (role === 'operator' && !target?.userId) {
         socket.emit('error', 'Only registered users can be made operators');
         return;

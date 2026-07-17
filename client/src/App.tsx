@@ -39,6 +39,7 @@ export default function App() {
   const { checkAuthStatus, startOAuth } = useGoogleSheets();
 
   const roomCode          = useSessionStore(s => s.roomCode);
+  const roomOwnerId       = useSessionStore(s => s.roomOwnerId);
   const users             = useSessionStore(s => s.users);
   const connected         = useSessionStore(s => s.connected);
   const isOperator        = useSessionStore(s => s.isOperator);
@@ -526,10 +527,10 @@ export default function App() {
                                   </span>
                                   {isOperator && !isSelf && (
                                     u.role === 'viewer' && !u.userId ? (
-                                      <span className="text-[9px] text-warm-700 shrink-0" title="Guest — must sign in to become operator">
+                                      <span className="text-[9px] text-warm-700 shrink-0" title="No account — must sign in to become operator">
                                         Guest
                                       </span>
-                                    ) : (
+                                    ) : u.userId && u.userId === roomOwnerId ? null : (
                                       <button
                                         onClick={() => setUserRole(u.id, u.role === 'operator' ? 'viewer' : 'operator')}
                                         className="text-[9px] text-warm-600 hover:text-warm-300

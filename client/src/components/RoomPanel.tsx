@@ -5,9 +5,10 @@ import { useSocket } from '../hooks/useSocket';
 import { cn } from '../utils/timeUtils';
 
 export function RoomPanel() {
-  const roomCode   = useSessionStore(s => s.roomCode);
-  const users      = useSessionStore(s => s.users);
-  const isOperator = useSessionStore(s => s.isOperator);
+  const roomCode    = useSessionStore(s => s.roomCode);
+  const roomOwnerId = useSessionStore(s => s.roomOwnerId);
+  const users       = useSessionStore(s => s.users);
+  const isOperator  = useSessionStore(s => s.isOperator);
   const currentUser = useSessionStore(s => s.user);
   const { sendAnnouncement, setUserRole } = useSocket();
 
@@ -68,6 +69,7 @@ export function RoomPanel() {
             const isMe       = u.id === currentUser?.id;
             const isRegistered = !!u.userId;
             const isOp       = u.role === 'operator';
+            const isOwner    = !!u.userId && u.userId === roomOwnerId;
 
             return (
               <li key={u.id}
@@ -106,11 +108,15 @@ export function RoomPanel() {
                 {/* Promote / demote — only operators can do this; can't change own role */}
                 {isOperator && !isMe && (
                   isOp ? (
-                    <button onClick={() => demoteUser(u.id)}
-                      title="Remove operator"
-                      className="text-warm-700 hover:text-amber-400 transition-colors flex-shrink-0">
-                      <ShieldOff className="w-3.5 h-3.5" />
-                    </button>
+                    isOwner ? (
+                      <span className="w-3.5 h-3.5 flex-shrink-0" />
+                    ) : (
+                      <button onClick={() => demoteUser(u.id)}
+                        title="Remove operator"
+                        className="text-warm-700 hover:text-amber-400 transition-colors flex-shrink-0">
+                        <ShieldOff className="w-3.5 h-3.5" />
+                      </button>
+                    )
                   ) : isRegistered ? (
                     <button onClick={() => promoteUser(u.id)}
                       title="Make operator"
