@@ -47,6 +47,7 @@ export default function App() {
   const leaveSession      = useSessionStore(s => s.leaveSession);
 
   const authUser      = useAuthStore(s => s.user);
+  const authLoading   = useAuthStore(s => s.loading);
   const plan          = useAuthStore(s => s.plan);
   const getToken      = useAuthStore(s => s.getToken);
   const features      = getPlanFeatures(plan);
@@ -174,6 +175,24 @@ export default function App() {
       joinRoom(stored.code, stored.name, token ?? undefined);
     } catch {}
   }, [authUser]);
+
+  // Guest viewer auto-rejoin: fires after auth settles (confirms no account) and socket
+  // connects. Without this, mobile guests who refresh see the local timer state but are
+  // disconnected — the join screen's rejoin banner never shows because hasStoredSession
+  // sends them straight to timer view, bypassing the join screen entirely.
+  useEffect(() => {
+    if (authUser || authLoading || roomCode || !connected) return;
+    try {
+      const raw = sessionStorage.getItem('stt-session');
+      if (!raw) return;
+      const stored = JSON.parse(raw) as { code: string; name: string; createdAt: number };
+      if (Date.now() - stored.createdAt > 24 * 60 * 60 * 1000) {
+        sessionStorage.removeItem('stt-session');
+        return;
+      }
+      joinRoom(stored.code, stored.name);
+    } catch {}
+  }, [connected, authUser, authLoading]);
 
 
   const handleCreateSession = () => {

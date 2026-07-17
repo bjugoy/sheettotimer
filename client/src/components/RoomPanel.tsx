@@ -113,14 +113,13 @@ export function RoomPanel() {
                     </button>
                   ) : isRegistered ? (
                     <button onClick={() => promoteUser(u.id)}
-                      title="Make operator (registered user)"
+                      title="Make operator"
                       className="text-warm-700 hover:text-crimson-400 transition-colors flex-shrink-0">
                       <ShieldCheck className="w-3.5 h-3.5" />
                     </button>
                   ) : (
-                    <span title="Guests cannot be promoted"
-                      className="w-3.5 h-3.5 flex-shrink-0 opacity-0 pointer-events-none">
-                      {/* spacer */}
+                    <span className="text-[9px] text-warm-800 flex-shrink-0" title="Must sign in to be promoted">
+                      no acct
                     </span>
                   )
                 )}
@@ -132,7 +131,7 @@ export function RoomPanel() {
         {isOperator && (
           <p className="text-[10px] text-warm-700 pt-1 border-t border-warm-800/40">
             <ShieldCheck className="w-3 h-3 inline mr-1 text-warm-800" />
-            Only registered users can be promoted to operator
+            Viewers must be signed in to a SheetToTimer account to be promoted
           </p>
         )}
       </div>
