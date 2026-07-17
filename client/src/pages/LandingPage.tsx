@@ -46,6 +46,8 @@ export function LandingPage() {
   const navigate   = useNavigate();
   const user       = useAuthStore(s => s.user);
   const loading    = useAuthStore(s => s.loading);
+  const authLinkError      = useAuthStore(s => s.authLinkError);
+  const clearAuthLinkError = useAuthStore(s => s.clearAuthLinkError);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
@@ -72,6 +74,20 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-warm-950 text-warm-100">
+
+      {authLinkError && (
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-8 py-2.5
+          bg-crimson-900/50 border-b border-crimson-800/60">
+          <p className="text-xs text-crimson-200">
+            {authLinkError}. Please request a new link.
+          </p>
+          <button
+            onClick={clearAuthLinkError}
+            className="shrink-0 text-xs text-crimson-300 hover:text-crimson-100 transition-colors">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* ── Nav ──────────────────────────────────────────────────────────────── */}
       <nav className="flex items-center justify-between px-4 sm:px-8 h-14 border-b border-warm-800/40">

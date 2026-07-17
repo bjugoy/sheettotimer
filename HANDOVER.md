@@ -158,6 +158,95 @@ Socket.io's long-polling fallback (used during the WebSocket handshake) requires
 
 ---
 
+## Password Reset / Email Confirmation Flow — ROOT CAUSE FOUND (2026-07-15)
+
+### Verified facts (probed live, not assumed)
+
+Probing the deployed domains and the Supabase verify endpoint (`curl` with a bogus token — the error redirect reveals the config) established:
+
+1. **Vercel primary domain is `www.sheettotimer.com`** (returns 200). The apex `sheettotimer.com` **307-redirects to www** — the *opposite* of what this document previously assumed. Commit `01cdfd1` hardcoded `redirectTo` to the apex, i.e. to the redirecting domain.
+2. **Supabase Site URL is the apex** (`https://sheettotimer.com`) — bogus-token probe without `redirect_to` lands there.
+3. **Supabase redirect allowlist accepts apex, rejects www** — `redirect_to=https://www.sheettotimer.com/...` falls back to Site URL root. This exactly reproduces the observed `https://www.sheettotimer.com/#access_token=...` root URL (Supabase → apex root → Vercel 307 → www root).
+4. Every auth email link therefore crossed an extra HTTP redirect (apex → www) carrying the `#access_token` fragment. Fragment preservation across cross-host redirects is browser-dependent (Safari and in-app email browsers drop it) — when dropped, the app sees no token and shows the landing page.
+5. **Expired/consumed links** redirect with `#error=access_denied&error_code=otp_expired&error_description=...` — the app had no handling for this and silently showed the landing page. Email scanners (Gmail/Outlook prefetch) can consume the one-time token before the user clicks, which is why "the confirmation link confirms but nothing happens".
+
+### Fix applied (code — this commit)
+
+Canonical origin is now **www** (matching Vercel; existing user sessions live in www's localStorage, so www must stay primary):
+
+- `client/src/lib/supabase.ts` — exports `SITE_ORIGIN` (`https://www.sheettotimer.com`, or `window.location.origin` on localhost).
+- `authStore.resetPassword` / `signInWithGoogle` — use `SITE_ORIGIN` (no more apex hop).
+- `authStore.signUp` — now passes `emailRedirectTo: SITE_ORIGIN` so confirmation links land on the root and `RootRedirect` sends the signed-in user to `/dashboard`.
+- `authStore` — captures `#error=...` hashes at module load into `authLinkError`, cleans the URL; `LandingPage` shows a dismissible banner ("…Please request a new link.") instead of doing nothing.
+
+### REQUIRED Supabase config (do this BEFORE deploying the code change)
+
+Supabase dashboard → Authentication → URL Configuration:
+1. **Site URL** → `https://www.sheettotimer.com`
+2. **Redirect URLs** → add `https://www.sheettotimer.com/**` (keep the apex entry).
+
+No Vercel or Heroku changes needed. Do **not** flip the Vercel primary domain to apex — that would strand every existing session (localStorage is per-origin, sessions live on www).
+
+### History of earlier attempts (superseded)
+
+### Symptom
+User clicks the reset-password email link and ends up on `/landing` or `/dashboard` instead of `/reset-password`. Has happened consistently across 5 fix attempts.
+
+### Observed URL
+The browser URL after clicking the email link is:
+```
+https://www.sheettotimer.com/#access_token=...&type=recovery
+```
+Key observations:
+- Domain is `www.sheettotimer.com` (with www), but the Supabase allowed redirect list only has `https://sheettotimer.com/**` (no www). Supabase ignores `redirectTo` and falls back to Site URL → user lands on root `/` not `/reset-password`.
+- Path is `/` (root), not `/reset-password` — confirming the `redirectTo` was rejected.
+- Hash contains `type=recovery` — the token itself is valid.
+
+### Fixes already applied (all merged, deployed)
+
+**Commit `5cba992`** — Added `needsPasswordReset` state to the auth store. When `onAuthStateChange` fires `PASSWORD_RECOVERY`, set `needsPasswordReset: true` instead of logging the user in normally. `RootRedirect` and `ResetPasswordPage` read this flag.
+
+**Commit `fc9b2bb`** — Supabase v2 may fire `SIGNED_IN` or `INITIAL_SESSION` instead of `PASSWORD_RECOVERY` depending on listener-registration timing. Added `_recoveryPending` (set from `window.location.hash.includes('type=recovery')` at module load) so any event with a user session triggers the reset form, not just `PASSWORD_RECOVERY`.
+
+**Commit `485cb0d`** — `_oauthCallback` was excluding hash-based tokens (`#access_token`) from calling `getSession()`. Hash tokens need `getSession()` to be processed. Fixed: `_oauthCallback` now only checks `?code=` (PKCE).
+
+**Commit `70c11c1`** — `PASSWORD_RECOVERY` fires asynchronously after `getSession()` resolves. Added `_recoveryPending` check inside the `getSession()` branch: if `session?.user` and `_recoveryPending`, set `needsPasswordReset: true` immediately instead of waiting for the async event.
+
+**Commit `01cdfd1`** — Two more fixes:
+1. Hardcoded `redirectTo` base to `https://sheettotimer.com` in production (not `window.location.origin`) to prevent www mismatch.
+2. When `getSession()` returns null but `_recoveryPending` is true, keep `loading: true` instead of clearing it — wait for the async `PASSWORD_RECOVERY` event via `onAuthStateChange`.
+
+### What to check next
+
+**A. Verify Supabase URL Configuration**
+Go to Supabase dashboard → Authentication → URL Configuration:
+- **Site URL** must be `https://sheettotimer.com` (no www, no trailing slash). If it is `https://www.sheettotimer.com`, Supabase's fallback redirect goes to www root.
+- **Redirect URLs** must include `https://sheettotimer.com/**`.
+
+**B. Check if www redirects strip the hash**
+Open DevTools → Network tab → navigate to `https://www.sheettotimer.com`. If there is a 301/302 redirect to `sheettotimer.com`, HTTP redirects strip the hash fragment. The `#access_token=...&type=recovery` would be lost, `_recoveryPending` stays false, user goes to landing.
+
+In Vercel → Project → Settings → Domains, the primary domain (no redirect) should be `sheettotimer.com`. `www.sheettotimer.com` should redirect to it. But since HTTP redirects strip hashes, the Supabase email link must never target the www domain — which is why the canonical-URL hardcode in the code matters.
+
+**C. Verify the deployed code is actually running**
+Open `https://sheettotimer.com` → DevTools Console → run:
+```js
+window.location.hash = '#access_token=test&type=recovery'
+```
+Then check if `_recoveryPending` logic is in the loaded JS. Or check the Network tab for the JS bundle name and compare its hash to the latest Vercel deployment.
+
+**D. Consider switching to PKCE flow for password reset**
+Hash-based tokens (`#access_token=`) are inherently fragile: any HTTP redirect strips them. Supabase supports PKCE-based password reset where the token comes via `?code=` (query param, survives redirects). This would eliminate the www-redirect fragility. See: Supabase docs on `flowType: 'pkce'` in the client config, or the `codeChallenge` option on `resetPasswordForEmail`.
+
+To enable: in `client/src/lib/supabase.ts`, add `auth: { flowType: 'pkce' }` to `createClient` options. Then `resetPasswordForEmail` generates a PKCE challenge. The email link will redirect to `/reset-password?code=...`. The existing `_oauthCallback` detection already uses `?code=`, so the PKCE exchange would run correctly.
+
+### Relevant files
+- [client/src/store/authStore.ts](client/src/store/authStore.ts) — `_recoveryPending`, `_oauthCallback`, `initialize()`, `resetPassword()`, `updatePassword()`
+- [client/src/pages/ResetPasswordPage.tsx](client/src/pages/ResetPasswordPage.tsx) — form UI, redirects away if `!needsPasswordReset`
+- [client/src/main.tsx](client/src/main.tsx) — `RootRedirect` checks `needsPasswordReset` before `user`
+
+---
+
 ## Recent commits
 
 | Commit | Summary |

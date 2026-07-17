@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Plan } from '../lib/plans';
-import { supabase } from '../lib/supabase';
+import { supabase, SITE_ORIGIN } from '../lib/supabase';
 import { apiUrl } from '../lib/api';
 
 interface AuthState {
@@ -10,6 +10,8 @@ interface AuthState {
   plan:                Plan;
   loading:             boolean;
   needsPasswordReset:  boolean;
+  authLinkError:       string | null;
+  clearAuthLinkError:  () => void;
 
   initialize:        () => Promise<void>;
   signIn:            (email: string, password: string) => Promise<string | null>;
@@ -35,6 +37,19 @@ interface AuthState {
 let _recoveryPending = window.location.hash.includes('type=recovery');
 const _oauthCallback = new URLSearchParams(window.location.search).has('code');
 
+// Expired or already-consumed email links (confirmation / password reset) come
+// back from Supabase's verify endpoint as
+//   #error=access_denied&error_code=otp_expired&error_description=...
+// with no access_token. Without handling, the app silently shows the landing
+// page. Capture the message for display and clean the hash from the URL.
+const _hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+const _linkError = !_hashParams.has('access_token') && _hashParams.has('error')
+  ? (_hashParams.get('error_description') ?? 'This link is invalid or has expired.')
+  : null;
+if (_linkError) {
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
 async function fetchPlan(userId: string): Promise<Plan> {
   const { data, error } = await supabase
     .from('profiles')
@@ -50,6 +65,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   plan:               'free',
   loading:            true,
   needsPasswordReset: false,
+  authLinkError:      _linkError,
+  clearAuthLinkError: () => set({ authLinkError: null }),
 
   initialize: async () => {
     const fallback = setTimeout(() => set(s => s.loading ? { loading: false } : s), 8000);
@@ -142,7 +159,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         clearFallback();
         set(s => s.loading ? { loading: false } : s);
       }
-    } else {
     }
   },
 
@@ -155,7 +171,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: {
+        data: { full_name: name },
+        // Confirmation link lands on the root; RootRedirect sends the
+        // now-signed-in user to /dashboard.
+        emailRedirectTo: SITE_ORIGIN,
+      },
     });
     return error?.message ?? null;
   },
@@ -163,19 +184,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithGoogle: async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://sheettotimer.com' },
+      options: { redirectTo: SITE_ORIGIN },
     });
     return error?.message ?? null;
   },
 
   resetPassword: async (email) => {
-    // Always use the canonical non-www domain so redirectTo matches the
-    // Supabase whitelist regardless of which domain the user is on.
-    const base = window.location.hostname === 'localhost'
-      ? window.location.origin
-      : 'https://sheettotimer.com';
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${base}/reset-password`,
+      redirectTo: `${SITE_ORIGIN}/reset-password`,
     });
     return error?.message ?? null;
   },

@@ -8,3 +8,11 @@ if (!url || !key) {
 }
 
 export const supabase = createClient(url ?? 'http://localhost', key ?? 'placeholder');
+
+// Canonical origin for auth redirects (email links, OAuth). Must be the
+// Vercel PRIMARY domain — www. The apex 307-redirects to www, and that extra
+// hop can drop the #access_token fragment Supabase puts in email links.
+// Must also be whitelisted in Supabase → Auth → URL Configuration.
+export const SITE_ORIGIN = window.location.hostname === 'localhost'
+  ? window.location.origin
+  : 'https://www.sheettotimer.com';
