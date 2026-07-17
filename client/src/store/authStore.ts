@@ -34,20 +34,26 @@ interface AuthState {
 //                   Hash-based tokens (#access_token) are NOT excluded here:
 //                   they require getSession() to be called so Supabase processes
 //                   the hash and fires PASSWORD_RECOVERY / SIGNED_IN.
-let _recoveryPending = window.location.hash.includes('type=recovery');
-const _oauthCallback = new URLSearchParams(window.location.search).has('code');
+// With PKCE flow, reset links arrive as ?code=...&type=recovery (no hash).
+// With implicit flow (legacy links), reset links arrive as #access_token=...&type=recovery.
+const _searchParams = new URLSearchParams(window.location.search);
+let _recoveryPending = window.location.hash.includes('type=recovery')
+  || _searchParams.get('type') === 'recovery';
+const _oauthCallback = _searchParams.has('code');
 
-// Expired or already-consumed email links (confirmation / password reset) come
-// back from Supabase's verify endpoint as
-//   #error=access_denied&error_code=otp_expired&error_description=...
-// with no access_token. Without handling, the app silently shows the landing
-// page. Capture the message for display and clean the hash from the URL.
+// Expired or already-consumed email links come back with error params.
+// PKCE flow:     ?error=access_denied&error_code=otp_expired&error_description=...
+// Implicit flow: #error=access_denied&error_code=otp_expired&error_description=...
 const _hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-const _linkError = !_hashParams.has('access_token') && _hashParams.has('error')
-  ? (_hashParams.get('error_description') ?? 'This link is invalid or has expired.')
-  : null;
+const _linkError = (
+  (_searchParams.has('error') && !_searchParams.has('code'))
+    ? (_searchParams.get('error_description') ?? 'This link is invalid or has expired.')
+    : (!_hashParams.has('access_token') && _hashParams.has('error'))
+      ? (_hashParams.get('error_description') ?? 'This link is invalid or has expired.')
+      : null
+);
 if (_linkError) {
-  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  window.history.replaceState(null, '', window.location.pathname);
 }
 
 async function fetchPlan(userId: string): Promise<Plan> {
